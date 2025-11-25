@@ -9,25 +9,29 @@ import org.springframework.stereotype.Component;
 import redis.clients.jedis.Jedis;
 
 @Component
-public class RedisSinkAdapter {
+public class RedisSink {
 
-    @Value("${redis.host}")
-    private String redisHost;
+    private final String redisHost;
+    private final int redisPort;
 
-    @Value("${redis.port}")
-    private int redisPort;
-
-    public RichSinkFunction<CTRResult> createSink() {
-        return new RedisSink(redisHost, redisPort);
+    public RedisSink(
+            @Value("${redis.host}") String redisHost,
+            @Value("${redis.port}") int redisPort) {
+        this.redisHost = redisHost;
+        this.redisPort = redisPort;
     }
 
-    public static class RedisSink extends RichSinkFunction<CTRResult> {
+    public RichSinkFunction<CTRResult> createSink() {
+        return new RedisRichSink(redisHost, redisPort);
+    }
+
+    public static class RedisRichSink extends RichSinkFunction<CTRResult> {
         private final String redisHost;
         private final int redisPort;
         private transient Jedis jedis;
         private transient ObjectMapper objectMapper;
 
-        public RedisSink(String redisHost, int redisPort) {
+        public RedisRichSink(String redisHost, int redisPort) {
             this.redisHost = redisHost;
             this.redisPort = redisPort;
         }

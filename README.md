@@ -33,17 +33,44 @@
                                              └──────────────┘
 ```
 
+### 📐 Flink 애플리케이션 구조 (DDD)
+
+Flink 애플리케이션은 **Domain-Driven Design (DDD)** 원칙을 따라 설계되었습니다:
+
+```
+flink-app/
+├── domain/              # 순수 비즈니스 로직 (Flink 의존성 없음)
+│   ├── model/          # Event, CTRResult 등 도메인 모델
+│   └── service/        # EventCountAggregator, CTRResultWindowProcessFunction
+├── application/        # 애플리케이션 서비스 (Job 구성)
+│   └── CtrJobService   # Flink Job Topology 정의
+├── infrastructure/     # 외부 시스템 연동
+│   ├── flink/
+│   │   ├── source/    # KafkaSourceAdapter
+│   │   └── sink/      # RedisSinkAdapter, DuckDBSinkAdapter, ClickHouseSinkAdapter
+│   └── config/        # Spring 설정
+└── CtrApplication      # Spring Boot 진입점
+```
+
+**설계 특징:**
+- **관심사 분리:** 도메인 로직과 인프라 코드 완전 분리
+- **테스트 용이성:** 순수 Java 객체로 단위 테스트 작성 가능
+- **유지보수성:** 인프라 변경 시 도메인 로직 영향 최소화
+- **Spring Boot 통합:** 의존성 주입 및 설정 외부화
+
 ## ✨ 주요 기능
 
 -   **실시간 처리:** **10초** 텀블링 윈도우(Tumbling Window)에 걸쳐 CTR을 계산합니다.
 -   **상태 기반 분석:** 비교 분석을 위해 **최신** CTR 결과와 **직전** CTR 결과를 모두 유지합니다.
 -   **멀티 싱크(Multi-Sink) 저장소:**
     -   **Redis:** 저지연(Low-latency) 서빙용.
-    -   **ClickHouse:** 고성능 OLAP 분석용.
-    -   **DuckDB:** 임베디드/로컬 파일 기반 분석용.
+    -   **ClickHouse:** 고성능 OLAP 분석용 (실시간 대시보드).
+    -   **DuckDB:** 임베디드/로컬 파일 기반 분석용 (개발/디버깅).
 -   **관측 가능성(Observability):** **Prometheus**(메트릭 수집)와 **Grafana**(대시보드)를 통한 포괄적인 모니터링.
 -   **RESTful API:** 계산된 CTR 데이터에 접근할 수 있는 엔드포인트를 제공하는 FastAPI 서버.
 -   **컨테이너화:** 전체 환경은 Docker를 사용하여 컨테이너화되어 있으며, Docker Compose와 쉘 스크립트로 관리됩니다.
+-   **Graceful Shutdown:** SIGTERM 시그널 처리로 안전한 종료 지원.
+-   **구조화된 로깅:** Logback을 통한 파일 및 콘솔 로깅, 로그 로테이션 지원.
 
 ## 🧩 구성 요소
 
@@ -51,16 +78,14 @@
 | --- | --- | --- |
 | **Data Producers** | `producers/` | 사용자 노출 및 클릭을 시뮬레이션하여 Kafka 토픽으로 이벤트를 전송하는 Python 스크립트입니다. |
 | **Event Stream** | `docker-compose` | 이벤트 스트림 수집을 위한 3개의 브로커로 구성된 Kafka 클러스터입니다. |
-| **Flink Processor** | `flink-app/` | 이벤트를 소비하고, 상태 기반 CTR 계산을 수행하며, 결과를 Redis, ClickHouse, DuckDB로 전송하는 Java/Flink 애플리케이션입니다. |
-| **Data Stores** | `docker-compose` | Redis (Hot data), ClickHouse (OLAP), DuckDB (Local analysis). |
-| **Serving API** | `serving-api/` | Redis에서 데이터를 읽어 REST API를 통해 CTR 데이터를 노출하는 Python/FastAPI 애플리케이션입니다. Docker Compose로 관리됩니다. |
-| **Monitoring** | `docker-compose` | Prometheus (Metrics) 및 Grafana (Visualization). |
+| **Stream Processor** | `flink-app/` | **Spring Boot + Gradle** 기반 Flink 애플리케이션으로 CTR을 계산하고 결과를 여러 싱크로 전송합니다. DDD 아키텍처 적용. |
+| **Serving Layer** | `serving-api/` | Redis에서 CTR 데이터를 가져오는 FastAPI 서버입니다. |
+| **Monitoring** | `prometheus.yml`, `grafana/` | Flink 메트릭 수집(Prometheus) 및 시각화(Grafana)를 위한 설정입니다. |
 | **Monitoring UIs** | `docker-compose` | 시스템 컴포넌트를 관찰하고 관리하기 위한 Kafka UI, Flink Dashboard, RedisInsight, Grafana입니다. |
 | **Performance Test**| `performance-test/`| API 부하 테스트 및 윈도우 로직 검증을 위한 Python 스크립트입니다. |
 
 ## 🛠️ 기술 스택
 
--   **Streaming:** Apache Kafka, Apache Flink
 -   **Backend & Serving:** FastAPI, Uvicorn
 -   **Databases:** Redis, ClickHouse, DuckDB
 -   **Monitoring:** Prometheus, Grafana
@@ -75,6 +100,13 @@
 ### 사전 요구 사항
 
 -   Docker 및 Docker Compose
+-   **Gradle 8.x** (Flink 앱 빌드용, Gradle 9.x는 호환성 문제로 지원하지 않음)
+    ```bash
+    # macOS (Homebrew)
+    brew install gradle@8
+    echo 'export PATH="/opt/homebrew/opt/gradle@8/bin:$PATH"' >> ~/.zshrc
+    source ~/.zshrc
+    ```
 -   Docker 이미지를 가져오기 위한 인터넷 연결
 
 ### 실행 방법

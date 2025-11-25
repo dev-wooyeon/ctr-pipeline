@@ -3,6 +3,7 @@ package com.example.ctr.infrastructure.flink.sink;
 import com.example.ctr.domain.model.CTRResult;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
@@ -11,22 +12,32 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 
 @Component
-public class DuckDBSinkAdapter {
+public class DuckDBSink {
 
-    public RichSinkFunction<CTRResult> createSink() {
-        return new DuckDBSink();
+    private final String duckdbUrl;
+
+    public DuckDBSink(@Value("${duckdb.url}") String duckdbUrl) {
+        this.duckdbUrl = duckdbUrl;
     }
 
-    public static class DuckDBSink extends RichSinkFunction<CTRResult> {
+    public RichSinkFunction<CTRResult> createSink() {
+        return new DuckDBRichSink(duckdbUrl);
+    }
+
+    public static class DuckDBRichSink extends RichSinkFunction<CTRResult> {
+        private final String duckdbUrl;
         private transient Connection connection;
         private transient PreparedStatement preparedStatement;
+
+        public DuckDBRichSink(String duckdbUrl) {
+            this.duckdbUrl = duckdbUrl;
+        }
 
         @Override
         public void open(Configuration parameters) throws Exception {
             super.open(parameters);
             Class.forName("org.duckdb.DuckDBDriver");
-            String url = "jdbc:duckdb:/tmp/ctr.duckdb";
-            connection = DriverManager.getConnection(url);
+            connection = DriverManager.getConnection(duckdbUrl);
 
             String createTableSql = "CREATE TABLE IF NOT EXISTS ctr_results (" +
                     "product_id VARCHAR, " +

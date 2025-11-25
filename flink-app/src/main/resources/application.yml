@@ -1,3 +1,9 @@
+spring:
+  main:
+    web-application-type: none  # Disable web server for Flink cluster mode
+  application:
+    name: ctr-calculator
+
 kafka:
   bootstrap-servers: kafka1:29092
   topics:
@@ -12,6 +18,9 @@ redis:
 clickhouse:
   url: jdbc:clickhouse://clickhouse:8123/default
   driver: com.clickhouse.jdbc.ClickHouseDriver
+
+duckdb:
+  url: jdbc:duckdb:/tmp/ctr.duckdb
 
 flink:
   parallelism: 1

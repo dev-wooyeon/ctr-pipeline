@@ -13,13 +13,16 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 @Component
-public class KafkaSourceAdapter {
+public class KafkaSource {
 
-    @Value("${kafka.bootstrap-servers}")
-    private String bootstrapServers;
+    private final String bootstrapServers;
 
-    public KafkaSource<Event> createSource(String topic, String groupId) {
-        return KafkaSource.<Event>builder()
+    public KafkaSource(@Value("${kafka.bootstrap-servers}") String bootstrapServers) {
+        this.bootstrapServers = bootstrapServers;
+    }
+
+    public org.apache.flink.connector.kafka.source.KafkaSource<Event> createSource(String topic, String groupId) {
+        return org.apache.flink.connector.kafka.source.KafkaSource.<Event>builder()
                 .setBootstrapServers(bootstrapServers)
                 .setTopics(topic)
                 .setGroupId(groupId)
