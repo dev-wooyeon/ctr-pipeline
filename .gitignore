@@ -48,3 +48,4 @@ tmp/
 # Docker
 # No specific Docker ignores needed based on the provided structure,
 # as docker-compose.yml is usually tracked.
+ctr_check.duckdb*
