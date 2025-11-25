@@ -26,7 +26,9 @@ except Exception as e:
 
 @app.get("/")
 def read_root():
-    """A welcome message and API status."""
+    """
+    A welcome message and API status.
+    """
     return {
         "message": "Welcome to the CTR Serving API",
         "redis_status": "connected" if redis_client else "disconnected"
