@@ -1,0 +1,64 @@
+spring:
+  main:
+    web-application-type: none  # Disable web server for Flink cluster mode
+  application:
+    name: ctr-calculator
+
+kafka:
+  bootstrap-servers: kafka1:29092
+  topics:
+    impression: impressions
+    click: clicks
+  group-id: ctr-calculator-group
+
+redis:
+  host: redis
+  port: 6379
+
+clickhouse:
+  url: jdbc:clickhouse://clickhouse:8123/default
+  driver: com.clickhouse.jdbc.ClickHouseDriver
+
+duckdb:
+  url: jdbc:duckdb:/tmp/ctr.duckdb
+
+ctr:
+  job:
+    impression-topic: ${kafka.topics.impression}
+    click-topic: ${kafka.topics.click}
+    group-id: ${kafka.group-id}
+    parallelism: ${flink.parallelism:1}
+    checkpoint-enabled: ${flink.checkpoint.enabled:true}
+    checkpoint-interval: ${flink.checkpoint.interval:60000}
+    checkpoint-timeout: ${flink.checkpoint.timeout:600000}
+    checkpoint-min-pause: ${flink.checkpoint.min-pause:5000}
+    checkpoint-max-concurrent: ${flink.checkpoint.max-concurrent:1}
+    checkpoint-storage: ${flink.state-backend.checkpoint-dir:file:///tmp/flink-checkpoints}
+    checkpointing-mode: ${flink.checkpoint.mode:EXACTLY_ONCE}
+    externalized-checkpoint-cleanup: RETAIN_ON_CANCELLATION
+    restart-attempts: ${flink.restart-strategy.attempts:3}
+    restart-delay-ms: ${flink.restart-strategy.delay:10000}
+
+flink:
+  parallelism: 1
+  
+  # 체크포인트 설정 (데이터 유실 방지)
+  checkpoint:
+    enabled: true
+    interval: 60000  # 60초마다 체크포인트 (운영: 30000-60000ms 권장)
+    timeout: 600000  # 10분 타임아웃
+    min-pause: 5000  # 체크포인트 간 최소 간격 5초
+    max-concurrent: 1  # 동시 체크포인트 수
+    mode: EXACTLY_ONCE  # AT_LEAST_ONCE or EXACTLY_ONCE
+    
+  # 상태 백엔드 설정
+  state-backend:
+    type: filesystem  # filesystem or rocksdb (대용량 상태는 rocksdb)
+    checkpoint-dir: file:///tmp/flink-checkpoints  # 운영: s3://bucket/checkpoints
+    savepoint-dir: file:///tmp/flink-savepoints    # 운영: s3://bucket/savepoints
+    
+  # 재시작 전략
+  restart-strategy:
+    type: fixed-delay  # fixed-delay, failure-rate, exponential-delay
+    attempts: 3  # 최대 재시작 횟수
+    delay: 10000  # 재시작 간격 (ms)

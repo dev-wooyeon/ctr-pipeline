@@ -1,101 +1,55 @@
 package com.example.ctr.application;
 
-import com.example.ctr.domain.model.CTRResult;
-import com.example.ctr.domain.model.Event;
-import com.example.ctr.domain.service.CTRResultWindowProcessFunction;
-import com.example.ctr.domain.service.EventCountAggregator;
-import com.example.ctr.infrastructure.flink.sink.ClickHouseSink;
-import com.example.ctr.infrastructure.flink.sink.DuckDBSink;
-import com.example.ctr.infrastructure.flink.sink.RedisSink;
-import com.example.ctr.infrastructure.flink.source.KafkaSource;
+import com.example.ctr.config.CtrJobProperties;
+import com.example.ctr.infrastructure.flink.FlinkEnvironmentFactory;
+import com.example.ctr.infrastructure.flink.CtrJobPipelineBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
-import org.apache.flink.streaming.api.windowing.time.Time;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
-import java.time.Duration;
+import jakarta.annotation.PreDestroy;
 
+/**
+ * CTR Flink 잡을 시작하는 서비스.
+ *
+ * 책임:
+ * 1️⃣ {@link FlinkEnvironmentFactory} 를 통해 설정된
+ * {@link StreamExecutionEnvironment} 획득
+ * 2️⃣ {@link CtrJobPipelineBuilder} 로 데이터 파이프라인 구성
+ * 3️⃣ 잡 실행 및 그레이스풀 셧다운 처리
+ */
 @Slf4j
 @Service
 public class CtrJobService {
 
-    private final KafkaSource kafkaSource;
-    private final RedisSink redisSink;
-    private final DuckDBSink duckDBSink;
-    private final ClickHouseSink clickHouseSink;
-
-    private final String impressionTopic;
-    private final String clickTopic;
-    private final String groupId;
-    private final int parallelism;
-
+    private final FlinkEnvironmentFactory envFactory;
+    private final CtrJobPipelineBuilder pipelineBuilder;
+    private final CtrJobProperties properties;
     private volatile StreamExecutionEnvironment env;
 
-    public CtrJobService(
-            KafkaSource kafkaSource,
-            RedisSink redisSink,
-            DuckDBSink duckDBSink,
-            ClickHouseSink clickHouseSink,
-            @Value("${kafka.topics.impression}") String impressionTopic,
-            @Value("${kafka.topics.click}") String clickTopic,
-            @Value("${kafka.group-id}") String groupId,
-            @Value("${flink.parallelism}") int parallelism) {
-        this.kafkaSource = kafkaSource;
-        this.redisSink = redisSink;
-        this.duckDBSink = duckDBSink;
-        this.clickHouseSink = clickHouseSink;
-        this.impressionTopic = impressionTopic;
-        this.clickTopic = clickTopic;
-        this.groupId = groupId;
-        this.parallelism = parallelism;
+    public CtrJobService(FlinkEnvironmentFactory envFactory,
+            CtrJobPipelineBuilder pipelineBuilder,
+            CtrJobProperties properties) {
+        this.envFactory = envFactory;
+        this.pipelineBuilder = pipelineBuilder;
+        this.properties = properties;
     }
 
     public void execute() {
         try {
-            log.info("Starting CTR Calculator Flink Job...");
-            env = StreamExecutionEnvironment.getExecutionEnvironment();
-            env.setParallelism(parallelism);
+            log.info("Starting CTR Calculator Flink Job (Exactly‑once)...");
 
-            // Register shutdown hook for graceful termination
+            // 실행 환경 생성 (체크포인트/재시작 전략 설정 등)
+            env = envFactory.create();
+
+            // 파이프라인 구성 (소스, 집계, 싱크)
+            pipelineBuilder.build(env);
+
+            // 그레이스풀 셧다운을 위한 훅 등록
             registerShutdownHook();
 
-            // Sources
-            DataStream<Event> impressionStream = env.fromSource(
-                    kafkaSource.createSource(impressionTopic, groupId),
-                    WatermarkStrategy.<Event>forBoundedOutOfOrderness(Duration.ofSeconds(5))
-                            .withTimestampAssigner(
-                                    (event, timestamp) -> java.sql.Timestamp.valueOf(event.getTimestamp()).getTime()),
-                    "Impression Source");
-
-            DataStream<Event> clickStream = env.fromSource(
-                    kafkaSource.createSource(clickTopic, groupId),
-                    WatermarkStrategy.<Event>forBoundedOutOfOrderness(Duration.ofSeconds(5))
-                            .withTimestampAssigner(
-                                    (event, timestamp) -> java.sql.Timestamp.valueOf(event.getTimestamp()).getTime()),
-                    "Click Source");
-
-            // Union & Transformation
-            DataStream<CTRResult> ctrResults = impressionStream.union(clickStream)
-                    .filter(Event::hasProductId)
-                    .keyBy(Event::getProductId)
-                    .window(TumblingEventTimeWindows.of(Time.seconds(10)))
-                    .allowedLateness(Time.seconds(5))
-                    .aggregate(new EventCountAggregator(), new CTRResultWindowProcessFunction());
-
-            // Sinks
-            ctrResults.addSink(redisSink.createSink()).name("Redis Sink");
-            ctrResults.addSink(duckDBSink.createSink()).name("DuckDB Sink").setParallelism(1);
-            ctrResults.addSink(clickHouseSink.createSink()).name("ClickHouse Sink");
-
-            ctrResults.print();
-
             log.info("Executing Flink job...");
-            env.execute("CTR Calculator Job (Spring Boot)");
+            env.execute("CTR Calculator Job (Exactly‑once)");
             log.info("Flink job completed successfully");
         } catch (Exception e) {
             log.error("Failed to execute Flink job", e);
@@ -108,7 +62,7 @@ public class CtrJobService {
             log.info("Shutdown hook triggered. Gracefully stopping Flink job...");
             try {
                 if (env != null) {
-                    // Flink will handle graceful shutdown automatically
+                    // JVM 종료 시 Flink가 그레이스풀 셧다운을 처리
                     log.info("Flink job shutdown initiated");
                 }
             } catch (Exception e) {

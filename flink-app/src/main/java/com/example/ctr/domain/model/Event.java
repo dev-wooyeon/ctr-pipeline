@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Set;
 
 @Data
 @Builder
@@ -33,4 +35,19 @@ public class Event {
     public boolean hasProductId() {
         return productId != null && !productId.isEmpty();
     }
+
+    public boolean isValid() {
+        return hasProductId()
+                && timestamp != null
+                && VALID_EVENT_TYPES.contains(eventType);
+    }
+
+    public long eventTimeMillisUtc() {
+        if (timestamp == null) {
+            return 0L;
+        }
+        return timestamp.atOffset(ZoneOffset.UTC).toInstant().toEpochMilli();
+    }
+
+    private static final Set<String> VALID_EVENT_TYPES = Set.of("view", "click");
 }

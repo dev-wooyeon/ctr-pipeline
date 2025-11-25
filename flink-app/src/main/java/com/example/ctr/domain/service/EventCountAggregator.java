@@ -1,33 +1,38 @@
 package com.example.ctr.domain.service;
 
 import com.example.ctr.domain.model.Event;
+import com.example.ctr.domain.model.EventCount;
 import org.apache.flink.api.common.functions.AggregateFunction;
-import org.apache.flink.api.java.tuple.Tuple2;
+import org.springframework.stereotype.Component;
 
-public class EventCountAggregator implements AggregateFunction<Event, Tuple2<Long, Long>, Tuple2<Long, Long>> {
+/**
+ * 이벤트를 집계하여 조회수(impressions)와 클릭수(clicks)를 계산하는 Aggregator
+ */
+@Component
+public class EventCountAggregator implements AggregateFunction<Event, EventCount, EventCount> {
 
     @Override
-    public Tuple2<Long, Long> createAccumulator() {
-        return Tuple2.of(0L, 0L); // impressions, clicks
+    public EventCount createAccumulator() {
+        return EventCount.initial();
     }
 
     @Override
-    public Tuple2<Long, Long> add(Event event, Tuple2<Long, Long> accumulator) {
+    public EventCount add(Event event, EventCount accumulator) {
         if ("view".equals(event.getEventType())) {
-            accumulator.f0 += 1;
+            accumulator.incrementImpressions();
         } else if ("click".equals(event.getEventType())) {
-            accumulator.f1 += 1;
+            accumulator.incrementClicks();
         }
         return accumulator;
     }
 
     @Override
-    public Tuple2<Long, Long> getResult(Tuple2<Long, Long> accumulator) {
+    public EventCount getResult(EventCount accumulator) {
         return accumulator;
     }
 
     @Override
-    public Tuple2<Long, Long> merge(Tuple2<Long, Long> a, Tuple2<Long, Long> b) {
-        return Tuple2.of(a.f0 + b.f0, a.f1 + b.f1);
+    public EventCount merge(EventCount a, EventCount b) {
+        return EventCount.merge(a, b);
     }
 }

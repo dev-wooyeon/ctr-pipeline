@@ -21,6 +21,8 @@ def flinkVersion = '1.18.1'
 dependencies {
     // Spring Boot
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     // Flink
@@ -42,6 +44,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    
+    // Jakarta Annotations (for @PreDestroy, etc.)
+    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
 
     // Metrics
     implementation "org.apache.flink:flink-metrics-prometheus:${flinkVersion}"
@@ -49,8 +54,10 @@ dependencies {
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.apache.flink:flink-test-utils:${flinkVersion}"
-    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
 tasks.named('test') {

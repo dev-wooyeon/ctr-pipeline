@@ -1,7 +1,7 @@
 # (Demo)실시간 클릭율 및 조회수 파이프라인
 
 이 프로젝트는 스트리밍 조회(impression) 및 클릭(click) 이벤트로부터 CTR(Click-Through-Rate)을 처리하는 파이프라인을 실습합니다.  이 파이프라인은 Kafka, Flink, Redis 를 사용하여 구축되었으며, 결과를 제공하기 위한 FastAPI 백엔드를 포함합니다.  
-또한 분석용 싱크(Sink)로 **ClickHouse**와 **DuckDB**를 포함하며, 모니터링을 위한 **Prometheus/Grafana** 스택도 갖추고 있습니다.
+또한 분석용 싱크(Sink)로 **ClickHouse**와 **DuckDB**를 포함하며, 모니터링을 위한 **Prometheus/Grafana** 스택도 갖추고 있습니다. 현재 Flink는 1.18.x(LTS)를 기준으로 구성되어 있습니다.
 
 ## 🏛️ 아키텍처
 
@@ -89,9 +89,9 @@ flink-app/
 -   **Backend & Serving:** FastAPI, Uvicorn
 -   **Databases:** Redis, ClickHouse, DuckDB
 -   **Monitoring:** Prometheus, Grafana
--   **Languages:** Java 11, Python 3.8
+-   **Languages:** Java 17, Python 3.8
 -   **Containerization:** Docker, Docker Compose
--   **Build Tools:** Maven, uv
+-   **Build Tools:** Gradle 8.x, uv
 
 ## 🚀 시작하기
 
@@ -196,6 +196,18 @@ docker-compose down
 *참고: 스크립트를 실행 가능하게 만들어야 할 수도 있습니다: `chmod +x scripts/*.sh`*
 
 ## ⚙️ 구성 상세
+
+### Flink 신뢰성 설정
+- 체크포인트: `ctr.job.checkpoint-*`로 간격/타임아웃/동시성/스토리지/모드 설정 (`RETAIN_ON_CANCELLATION` 외부 체크포인트 정리 정책).
+- 재시작 전략: `ctr.job.restart-attempts`, `ctr.job.restart-delay-ms`로 설정 (기본 3회, 10초 간격).
+- 타임 핸들링: 이벤트 타임은 UTC 기준 millis로 변환해 워터마크 생성.
+- 유효성 검증: 역직렬화 단계에서 스키마 검증(필수 필드/이벤트 타입) 후 잘못된 이벤트는 드롭 및 경고 로그.
+- 싱크 견고성: Redis/DuckDB 싱크에 재시도·백오프 및 Flink 메트릭(success/failure 카운터) 추가.
+- 관측성: Prometheus 리포터 활성화 시 위 메트릭을 노출해 모니터링 가능.
+
+### Serving API 안정화
+- Redis 연결을 애플리케이션 수명주기에서 초기화/정리하며, 연결/소켓 타임아웃을 설정.
+- FastAPI 의존성 주입으로 요청 처리 시 Redis 가용성 확인, 에러 메시지를 구체화.
 
 ### Flink 처리 로직
 

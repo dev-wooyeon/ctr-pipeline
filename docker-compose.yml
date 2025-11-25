@@ -83,8 +83,8 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 2
-        parallelism.default: 2
+        taskmanager.numberOfTaskSlots: 1
+        parallelism.default: 1
     volumes:
       - ./flink-app/build/libs:/opt/flink/usrlib
 
@@ -100,8 +100,8 @@ services:
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
         taskmanager.rpc.port: 6122
-        taskmanager.numberOfTaskSlots: 2
-        parallelism.default: 2
+        taskmanager.numberOfTaskSlots: 1
+        parallelism.default: 1
     volumes:
       - ./flink-app/build/libs:/opt/flink/usrlib
 
