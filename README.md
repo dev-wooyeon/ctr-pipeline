@@ -1,4 +1,4 @@
-# (Demo)실시간 CTR 파이프라인
+# 실시간 CTR 데이터 파이프라인
 
 이 프로젝트는 스트리밍 조회(impression) 및 클릭(click) 이벤트로부터 CTR(Click-Through-Rate)을 처리하는 파이프라인을 실습합니다.  이 파이프라인은 Kafka, Flink, Redis 를 사용하여 구축되었으며, 결과를 제공하기 위한 FastAPI 백엔드를 포함합니다.  
 또한 분석용 싱크(Sink)로 **ClickHouse**와 **DuckDB**를 포함하며, 모니터링을 위한 **Prometheus/Grafana** 스택도 갖추고 있습니다. 현재 Flink는 1.18.x(LTS)를 기준으로 구성되어 있습니다.
