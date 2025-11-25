@@ -86,7 +86,7 @@ services:
         taskmanager.numberOfTaskSlots: 2
         parallelism.default: 2
     volumes:
-      - ./flink-app/target:/opt/flink/usrlib
+      - ./flink-app/build/libs:/opt/flink/usrlib
 
   # Flink TaskManager
   flink-taskmanager:
@@ -103,7 +103,7 @@ services:
         taskmanager.numberOfTaskSlots: 2
         parallelism.default: 2
     volumes:
-      - ./flink-app/target:/opt/flink/usrlib
+      - ./flink-app/build/libs:/opt/flink/usrlib
 
   # Redis
   redis:

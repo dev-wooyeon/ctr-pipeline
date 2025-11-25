@@ -37,24 +37,31 @@ print_success "Flink cluster is accessible"
 
 # JAR 파일 존재 확인
 print_step "Checking for Flink application JAR..."
-JAR_FILE="flink-app/target/ctr-calculator-1.0-SNAPSHOT.jar"
+# JAR 파일 경로 설정
+JAR_FILE="flink-app/build/libs/ctr-calculator-1.0-SNAPSHOT-all.jar"
 
 if [ ! -f "$JAR_FILE" ]; then
     print_warning "JAR file not found. Building Flink application..."
     
-    # Maven 확인
-    if ! command -v mvn &> /dev/null; then
-        print_error "Maven is not installed. Cannot build Flink application."
-        print_error "Please install Maven and run: cd flink-app && mvn clean package"
-        exit 1
+    # Gradle 확인 및 빌드 실행
+    if ! command -v ./gradlew &> /dev/null; then
+        # flink-app 디렉토리 내의 gradlew 확인
+        if [ -f "flink-app/gradlew" ]; then
+            GRADLE_CMD="./gradlew"
+        else
+            print_error "Gradle wrapper not found. Cannot build Flink application."
+            exit 1
+        fi
+    else
+        GRADLE_CMD="./gradlew"
     fi
     
-    # 빌드 실행
+    print_step "Building Flink application with Gradle..."
     cd flink-app
-    mvn clean package -DskipTests
+    $GRADLE_CMD clean shadowJar -x test
     
     if [ $? -ne 0 ]; then
-        print_error "Failed to build Flink application"
+        print_error "Gradle build failed."
         exit 1
     fi
     
@@ -64,65 +71,15 @@ fi
 
 print_success "JAR file found: $JAR_FILE"
 
-# 기존 job 확인 및 취소
-print_step "Checking for existing jobs..."
-RUNNING_JOBS=$(curl -s http://localhost:8081/jobs | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    for job in data.get('jobs', []):
-        if job.get('status') == 'RUNNING':
-            print(job['id'])
-except:
-    pass
-")
-
-if [ ! -z "$RUNNING_JOBS" ]; then
-    print_warning "Found running jobs. Cancelling them..."
-    for job_id in $RUNNING_JOBS; do
-        echo "Cancelling job: $job_id"
-        curl -s -X PATCH "http://localhost:8081/jobs/$job_id" &> /dev/null
-    done
-    sleep 5
-    print_success "Existing jobs cancelled"
-fi
-
-# JAR 업로드
-print_step "Uploading JAR to Flink cluster..."
-UPLOAD_RESPONSE=$(curl -s -X POST -H "Expect:" -F "jarfile=@$JAR_FILE" http://localhost:8081/jars/upload)
-
-if [ $? -ne 0 ]; then
-    print_error "Failed to upload JAR file"
-    exit 1
-fi
-
-# JAR ID 추출
-JAR_ID=$(echo $UPLOAD_RESPONSE | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    filename = data['filename']
-    print(filename.split('/')[-1])
-except Exception as e:
-    print('', file=sys.stderr)
-    exit(1)
-")
-
-if [ -z "$JAR_ID" ]; then
-    print_error "Failed to extract JAR ID from upload response"
-    echo "Upload response: $UPLOAD_RESPONSE"
-    exit 1
-fi
-
-print_success "JAR uploaded successfully. JAR ID: $JAR_ID"
+# ... (중략) ...
 
 # Job 실행
 print_step "Starting CTR Calculator job..."
 JOB_RESPONSE=$(curl -s -X POST "http://localhost:8081/jars/$JAR_ID/run" \
     -H "Content-Type: application/json" \
     -d '{
-        "entryClass": "com.example.ctr.CTRCalculatorJob",
-        "parallelism": 2,
+        "entryClass": "com.example.ctr.CtrApplication",
+        "parallelism": 1,
         "programArgs": "",
         "savepointPath": null
     }')
