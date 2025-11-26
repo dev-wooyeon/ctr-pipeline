@@ -1,4 +1,4 @@
-# (Demo)실시간 클릭율 및 조회수 파이프라인
+# 실시간 CTR 데이터 파이프라인
 
 이 프로젝트는 스트리밍 조회(impression) 및 클릭(click) 이벤트로부터 CTR(Click-Through-Rate)을 처리하는 파이프라인을 실습합니다.  이 파이프라인은 Kafka, Flink, Redis 를 사용하여 구축되었으며, 결과를 제공하기 위한 FastAPI 백엔드를 포함합니다.  
 또한 분석용 싱크(Sink)로 **ClickHouse**와 **DuckDB**를 포함하며, 모니터링을 위한 **Prometheus/Grafana** 스택도 갖추고 있습니다. 현재 Flink는 1.18.x(LTS)를 기준으로 구성되어 있습니다.
@@ -39,16 +39,16 @@ Flink 애플리케이션은 **Domain-Driven Design (DDD)** 원칙을 따라 설�
 
 ```
 flink-app/
-├── domain/              # 순수 비즈니스 로직 (Flink 의존성 없음)
+├── domain/             # 순수 비즈니스 로직 (Flink 의존성 없음)
 │   ├── model/          # Event, CTRResult 등 도메인 모델
 │   └── service/        # EventCountAggregator, CTRResultWindowProcessFunction
 ├── application/        # 애플리케이션 서비스 (Job 구성)
 │   └── CtrJobService   # Flink Job Topology 정의
 ├── infrastructure/     # 외부 시스템 연동
 │   ├── flink/
-│   │   ├── source/    # KafkaSourceAdapter
-│   │   └── sink/      # RedisSinkAdapter, DuckDBSinkAdapter, ClickHouseSinkAdapter
-│   └── config/        # Spring 설정
+│   │   ├── source/     # KafkaSourceAdapter
+│   │   └── sink/       # RedisSinkAdapter, DuckDBSinkAdapter, ClickHouseSinkAdapter
+│   └── config/         # Spring 설정
 └── CtrApplication      # Spring Boot 진입점
 ```
 
@@ -62,7 +62,7 @@ flink-app/
 
 -   **실시간 처리:** **10초** 텀블링 윈도우(Tumbling Window)에 걸쳐 CTR을 계산합니다.
 -   **상태 기반 분석:** 비교 분석을 위해 **최신** CTR 결과와 **직전** CTR 결과를 모두 유지합니다.
--   **멀티 싱크(Multi-Sink) 저장소:**
+-   **멀티 싱크(Multi-Sink):**
     -   **Redis:** 저지연(Low-latency) 서빙용.
     -   **ClickHouse:** 고성능 OLAP 분석용 (실시간 대시보드).
     -   **DuckDB:** 임베디드/로컬 파일 기반 분석용 (개발/디버깅).
@@ -95,7 +95,7 @@ flink-app/
 
 ## 🚀 시작하기
 
-로컬 머신에서 전체 파이프라인을 실행하려면 다음 단계를 따르세요.
+로컬 머신에서 전체 파이프라인을 실행하려면 다음 단계를 따릅니다.
 
 ### 사전 요구 사항
 
@@ -111,13 +111,13 @@ flink-app/
 
 ### 실행 방법
 
-단 하나의 스크립트로 인프라 시작, 데이터베이스 초기화, Flink 작업 배포, 데이터 생성기 시작까지 모든 과정을 수행합니다.
+하나의 스크립트로 인프라 시작, 데이터베이스 초기화, Flink 작업 배포, Kafka 토픽 생성, 데이터 생성기 시작까지 모든 과정을 수행합니다.
 
 ```shell
 ./scripts/setup.sh
 ```
 
-스크립트가 완료되면 전체 파이프라인이 실행 중인 상태가 됩니다!
+스크립트가 정상적으로 완료되면 전체 파이프라인이 실행 중인 상태가 됩니다!
 
 ## 📊 확인 방법
 
@@ -152,6 +152,11 @@ docker compose exec -it clickhouse clickhouse-client --query "SELECT count() FRO
 
 **DuckDB:**
 ```bash
+# DuckDB가 설치가 되어있지 않다면 설치합니다.
+brew install duckdb
+```
+
+```bash
 # 로컬로 복사합니다.
 docker cp flink-taskmanager:/tmp/ctr.duckdb ./ctr_check.duckdb
 docker cp flink-taskmanager:/tmp/ctr.duckdb.wal ./ctr_check.duckdb.wal
@@ -170,14 +175,14 @@ docker compose exec -it redis redis-cli HGETALL ctr:latest
 제공된 스크립트를 사용하여 애플리케이션의 각 부분을 중지할 수 있습니다.
 
 ```bash
+# 모든 인프라 서비스 중지 및 제거
+docker-compose down
+
 # 데이터 생성기 중지
 ./scripts/stop-producers.sh
 
 # Flink 작업 중지
 ./scripts/stop-flink-job.sh
-
-# 모든 인프라 서비스 중지 및 제거
-docker-compose down
 ```
 
 ## 📜 스크립트 개요
@@ -225,4 +230,4 @@ docker-compose down
 
 ---
 
-*이 프로젝트는 AI 어시스턴트 **Codex** 및 **Gemini**를 활용하여 반복적으로 개발하고 개선했습니다.*
+*이 프로젝트는 AI 어시스턴트 **Codex**를 활용하여 반복적으로 개발하고 개선했습니다.*
