@@ -1,8 +1,10 @@
 package com.example.ctr.application;
 
-import com.example.ctr.config.CtrJobProperties;
-import com.example.ctr.infrastructure.flink.FlinkEnvironmentFactory;
+// import com.example.ctr.infrastructure.flink.FlinkEnvironmentFactory;
 import com.example.ctr.infrastructure.flink.CtrJobPipelineBuilder;
+import com.example.ctr.infrastructure.flink.FlinkEnvironmentFactory;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.springframework.stereotype.Service;
@@ -20,20 +22,12 @@ import jakarta.annotation.PreDestroy;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class CtrJobService {
 
     private final FlinkEnvironmentFactory envFactory;
     private final CtrJobPipelineBuilder pipelineBuilder;
-    private final CtrJobProperties properties;
     private volatile StreamExecutionEnvironment env;
-
-    public CtrJobService(FlinkEnvironmentFactory envFactory,
-            CtrJobPipelineBuilder pipelineBuilder,
-            CtrJobProperties properties) {
-        this.envFactory = envFactory;
-        this.pipelineBuilder = pipelineBuilder;
-        this.properties = properties;
-    }
 
     public void execute() {
         try {
