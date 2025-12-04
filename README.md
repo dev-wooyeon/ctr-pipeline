@@ -1,7 +1,7 @@
 # 실시간 CTR 데이터 파이프라인
 
 이 프로젝트는 스트리밍 조회(impression) 및 클릭(click) 이벤트로부터 CTR(Click-Through-Rate)을 처리하는 파이프라인을 실습합니다.  이 파이프라인은 Kafka, Flink, Redis 를 사용하여 구축되었으며, 결과를 제공하기 위한 FastAPI 백엔드를 포함합니다.  
-또한 분석용 싱크(Sink)로 **ClickHouse**와 **DuckDB**를 포함하며, 모니터링을 위한 **Prometheus/Grafana** 스택도 갖추고 있습니다. 현재 Flink는 1.18.x(LTS)를 기준으로 구성되어 있습니다.
+또한 분석용 싱크(Sink)로 **ClickHouse**와 **DuckDB**를 포함합니다. 현재 Flink는 1.18.x(LTS)를 기준으로 구성되어 있습니다.
 
 ## 🏛️ 아키텍처
 
@@ -68,7 +68,6 @@ flink-app/
     -   **Redis:** 저지연(Low-latency) 서빙용.
     -   **ClickHouse:** 고성능 OLAP 분석용 (실시간 대시보드).
     -   **DuckDB:** 임베디드/로컬 파일 기반 분석용 (개발/디버깅).
--   **관측 가능성(Observability):** **Prometheus**(메트릭 수집)와 **Grafana**(대시보드)를 통한 포괄적인 모니터링.
 -   **RESTful API:** 계산된 CTR 데이터에 접근할 수 있는 엔드포인트를 제공하는 FastAPI 서버.
 -   **컨테이너화:** 전체 환경은 Docker를 사용하여 컨테이너화되어 있으며, Docker Compose와 쉘 스크립트로 관리됩니다.
 -   **Graceful Shutdown:** SIGTERM 시그널 처리로 안전한 종료 지원.
@@ -83,15 +82,12 @@ flink-app/
 | **Event Stream** | `docker-compose` | 이벤트 스트림 수집을 위한 3개의 브로커로 구성된 Kafka 클러스터입니다. |
 | **Stream Processor** | `flink-app/` | **Gradle + Lombok** 기반 경량 Flink 애플리케이션으로 CTR을 계산하고 결과를 여러 싱크로 전송합니다. DDD 아키텍처 적용, Jackson YAML 기반 설정. |
 | **Serving Layer** | `serving-api/` | Redis에서 CTR 데이터를 가져오는 FastAPI 서버입니다. |
-| **Monitoring** | `prometheus.yml`, `grafana/` | Flink 메트릭 수집(Prometheus) 및 시각화(Grafana)를 위한 설정입니다. |
-| **Monitoring UIs** | `docker-compose` | 시스템 컴포넌트를 관찰하고 관리하기 위한 Kafka UI, Flink Dashboard, RedisInsight, Grafana입니다. |
 | **Performance Test**| `performance-test/`| API 부하 테스트 및 윈도우 로직 검증을 위한 Python 스크립트입니다. |
 
 ## 🛠️ 기술 스택
 
 -   **Backend & Serving:** FastAPI, Uvicorn
 -   **Databases:** Redis, ClickHouse, DuckDB
--   **Monitoring:** Prometheus, Grafana
 -   **Languages:** Java 17, Python 3.8
 -   **Containerization:** Docker, Docker Compose
 -   **Build Tools:** Gradle 8.x, uv
@@ -134,7 +130,6 @@ flink-app/
 | **Flink UI** | `http://localhost:8081` | Flink 작업 및 클러스터 상태 모니터링. |
 | **Kafka UI** | `http://localhost:8080` | Kafka 토픽 및 메시지 탐색. |
 | **RedisInsight** | `http://localhost:5540` | Redis에 저장된 데이터 검사를 위한 GUI. |
-| **Grafana** | `http://localhost:3000` | Flink 메트릭 시각화 (User/Pass: admin/admin). |
 
 ### API 엔드포인트
 
@@ -210,8 +205,7 @@ docker-compose down
 - 재시작 전략: `ctr.job.restart-attempts`, `ctr.job.restart-delay-ms`로 설정 (기본 3회, 10초 간격).
 - 타임 핸들링: 이벤트 타임은 UTC 기준 millis로 변환해 워터마크 생성.
 - 유효성 검증: 역직렬화 단계에서 스키마 검증(필수 필드/이벤트 타입) 후 잘못된 이벤트는 드롭 및 경고 로그.
-- 싱크 견고성: Redis/DuckDB 싱크에 재시도·백오프 및 Flink 메트릭(success/failure 카운터) 추가.
-- 관측성: Prometheus 리포터 활성화 시 위 메트릭을 노출해 모니터링 가능.
+- 싱크 견고성: Redis/DuckDB 싱크에 재시도·백오프를 추가.
 
 ### Serving API 안정화
 - Redis 연결을 애플리케이션 수명주기에서 초기화/정리하며, 연결/소켓 타임아웃을 설정.

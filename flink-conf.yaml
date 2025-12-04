@@ -1,0 +1,6 @@
+jobmanager.rpc.address: flink-jobmanager
+taskmanager.numberOfTaskSlots: 1
+parallelism.default: 1
+
+blob.server.port: 6124
+query.server.port: 6125

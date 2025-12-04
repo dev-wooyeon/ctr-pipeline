@@ -79,11 +79,12 @@ services:
       - "8081:8081"
     command: jobmanager
     environment:
-      - |
-        FLINK_PROPERTIES=
+      FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink-jobmanager
         taskmanager.numberOfTaskSlots: 2
         parallelism.default: 2
+        jobmanager.memory.process.size: 1024m
+        taskmanager.memory.process.size: 2048m
     volumes:
       - ./flink-app/build/libs:/opt/flink/usrlib
 
@@ -95,12 +96,13 @@ services:
       - flink-jobmanager
     command: taskmanager
     environment:
-      - |
-        FLINK_PROPERTIES=
+      FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink-jobmanager
         taskmanager.rpc.port: 6122
         taskmanager.numberOfTaskSlots: 2
         parallelism.default: 2
+        jobmanager.memory.process.size: 1024m
+        taskmanager.memory.process.size: 2048m
     volumes:
       - ./flink-app/build/libs:/opt/flink/usrlib
 
@@ -150,37 +152,23 @@ services:
         soft: 262144
         hard: 262144
 
-  # Prometheus
-  prometheus:
-    image: prom/prometheus:v2.45.0
-    container_name: prometheus
+  # Superset for ClickHouse visualization
+  superset:
+    image: apache/superset:3.1.0
+    container_name: superset
     ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-
-  # Grafana
-  grafana:
-    image: grafana/grafana:10.0.3
-    container_name: grafana
-    ports:
-      - "3000:3000"
+      - "8088:8088"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - SUPERSET_SECRET_KEY=change-me
+      - EXTRA_PYTHON_DEPS=clickhouse-connect
     volumes:
-      - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - superset-home:/app/superset_home
     depends_on:
-      - prometheus
+      - clickhouse
 
 volumes:
   redis-data:
   redisinsight:
   clickhouse-data:
   duckdb-data:
-  prometheus-data:
-  grafana-data:
+  superset-home:
