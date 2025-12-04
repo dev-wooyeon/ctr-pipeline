@@ -59,6 +59,16 @@ fi
 
 print_success "Python 3 is installed"
 
+# JDK 17 고정 (macOS: /usr/libexec/java_home 사용)
+JAVA_17_HOME=$(/usr/libexec/java_home -v 17 2>/dev/null)
+if [ -n "$JAVA_17_HOME" ]; then
+    export JAVA_HOME="$JAVA_17_HOME"
+    export PATH="$JAVA_HOME/bin:$PATH"
+    print_success "JAVA_HOME set to JDK 17 ($JAVA_HOME)"
+else
+    print_warning "JDK 17 not found via /usr/libexec/java_home -v 17. Please install temurin-17 or set JAVA_HOME manually."
+fi
+
 # Gradle 확인
 print_step "Checking Gradle installation..."
 GRADLE_CMD=""
@@ -242,7 +252,6 @@ echo "Kafka UI: http://localhost:8080"
 echo "Flink Web UI: http://localhost:8081"
 echo "RedisInsight: http://localhost:5540"
 echo "Fast API: http://localhost:8000"
-echo "Grafana: http://localhost:3000"
 echo ""
 
 print_success "Setup completed successfully! The entire pipeline is running."
@@ -250,5 +259,4 @@ echo ""
 echo "You can now:"
 echo "1. Monitor results in RedisInsight: http://localhost:5540"
 echo "2. View Flink Job in Web UI: http://localhost:8081"
-echo "3. Check Grafana Dashboards: http://localhost:3000"
-echo "4. Access Serving API: http://localhost:8000/docs"
+echo "3. Access Serving API: http://localhost:8000/docs"
