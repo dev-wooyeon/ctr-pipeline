@@ -1,75 +1,33 @@
-# API Performance Test
+# API Performance Test (k6)
 
-35초간 0.5초마다 API를 호출하여 성능을 측정하고 데이터 업데이트 3회를 확인하는 테스트입니다.
+k6 기반으로 `/ctr/latest` API를 호출하여 성능을 측정하고 `window_end` 변화를 추적합니다.
+- 기본: 35초 동안 초당 10건(`constant-arrival-rate`) 호출
+- 95% 응답 시간 1초 미만을 `threshold`로 검증
+- `window_end` 변화(새 윈도우/소멸 윈도우)와 각 윈도우의 지속시간을 요약 출력
 
 ## 실행 방법
 
-1. **의존성 설치:**
-```bash
-cd performance-test
-pip install -r requirements.txt
-# 또는
-uv pip install aiohttp
-```
+1. **k6 설치**
+   ```bash
+   brew install k6  # 또는 https://k6.io/docs/get-started/installation/ 참고
+   ```
 
-2. **API 서버 실행 확인:**
-- `docker-compose up -d serving-api` 또는 API 서버가 http://localhost:8000에서 실행 중인지 확인
+2. **테스트 실행**
+   ```bash
+   cd performance-test
+   k6 run k6_api_performance_test.js \\
+     -e API_URL=http://localhost:8000 \\
+     -e RATE=10 \\
+     -e TEST_DURATION=35s
+   ```
 
-3. **프로듀서 실행 (데이터 생성용):**
-```bash
-uv run producers/click_producer.py &
-uv run producers/impression_producer.py &
-```
+## 주요 환경 변수
+- `API_URL` (기본: `http://localhost:8000`)
+- `API_ENDPOINT` (기본: `/ctr/latest`)
+- `RATE` 요청/초 (기본: `10`)
+- `TEST_DURATION` 부하 지속 시간 (기본: `35s`, `10s`/`1m`/`1h` 형식 지원)
+- `VUS` 사전 할당 VU (기본: `2`), `MAX_VUS` (기본: `20`)
 
-4. **Flink 작업 실행 (10분 윈도우 집계용):**
-```bash
-./scripts/deploy-flink-job.sh
-```
-
-5. **테스트 실행:**
-```bash
-python3 api_performance_test.py
-```
-
-## 테스트 내용
-
-- **지속시간**: 35초
-- **호출 간격**: 0.1초 (총 ~350회 API 호출)
-- **검증사항**: 
-  - window_end 값 변화 감지 및 횟수 집계
-  - 응답시간 1초 이내 (95% 이상)
-  - API 성능 지표 측정 (평균 응답시간 포함)
-
-## 출력 예시
-
-```
-🔄 WINDOW_END CHANGES:
-📊 Total window_end changes detected: 3
-✅ Window end transitions successfully tracked!
-   Change #1: 14:23:15.123 (Call #120)
-     ⏱️  Previous window duration: 12456ms
-     ➡️  New windows: [1693564995000]
-   Change #2: 14:23:25.456 (Call #225) 
-     ⏱️  Previous window duration: 10333ms
-     ➡️  New windows: [1693565595000]
-   Change #3: 14:23:35.789 (Call #330)
-     ⏱️  Previous window duration: 10333ms
-     ➡️  New windows: [1693566195000]
-
-📈 WINDOW DURATION STATS:
-   Average window duration: 11041ms
-   Total measured duration: 33122ms
-📊 Final window duration: 1867ms (until test end)
-
-⚡ PERFORMANCE METRICS:
-   Total API Calls: 350
-   Success Rate: 100.0%
-   Calls per Second: 10.0
-
-⏱️  RESPONSE TIME ANALYSIS:
-   Average: 0.045s
-   95th Percentile: 0.089s
-
-🎯 LATENCY REQUIREMENT (< 1 second):
-   ✅ SUCCESS: 100.0% of calls under 1s (350/350)
-```
+## 결과
+- 표준 출력으로 `window_end` 변동 로그, 각 윈도우 지속시간, 성공률, 응답 지표(p95 포함) 제공
+- k6 기본 요약도 함께 출력되어 실패율/지연 SLA를 한눈에 확인할 수 있습니다.
