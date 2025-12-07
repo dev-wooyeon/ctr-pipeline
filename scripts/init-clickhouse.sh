@@ -7,7 +7,21 @@ CLICKHOUSE_DB="${CLICKHOUSE_DB:-default}"
 
 echo "Initializing ClickHouse schema for CTR pipeline at ${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/${CLICKHOUSE_DB}"
 
-CLICKHOUSE_CMD=("docker" "compose" "exec" "-T" "clickhouse" "clickhouse-client" "--host" "$CLICKHOUSE_HOST" "--port" "$CLICKHOUSE_PORT" "--multiquery")
+CLICKHOUSE_BASE_CMD=("docker" "compose" "exec" "-T" "clickhouse" "clickhouse-client" "--host" "$CLICKHOUSE_HOST" "--port" "$CLICKHOUSE_PORT")
+
+for i in {1..30}; do
+    if "${CLICKHOUSE_BASE_CMD[@]}" --query "SELECT 1" &> /dev/null; then
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "[WARNING] ClickHouse did not become ready within timeout" >&2
+        exit 1
+    fi
+    echo "Waiting for ClickHouse... ($i/30)"
+    sleep 1
+done
+
+CLICKHOUSE_CMD=("${CLICKHOUSE_BASE_CMD[@]}" "--multiquery")
 
 ("${CLICKHOUSE_CMD[@]}") <<SQL
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.ctr_results (

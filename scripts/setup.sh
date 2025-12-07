@@ -206,25 +206,9 @@ docker exec kafka1 kafka-topics --bootstrap-server kafka1:29092 --list
 
 # ClickHouse schema 및 Materialized View 초기화
 print_step "Initializing ClickHouse schema and materialized views..."
-# Wait for ClickHouse to be ready
-for i in {1..30}; do
-    if docker exec clickhouse clickhouse-client --query "SELECT 1" &> /dev/null; then
-        break
-    fi
-    if [ $i -eq 30 ]; then
-        print_warning "ClickHouse might not be ready yet. Proceeding anyway..."
-    fi
-    echo "Waiting for ClickHouse... ($i/30)"
-    sleep 1
-done
-
 chmod +x scripts/init-clickhouse.sh
-CLICKHOUSE_HOST=clickhouse CLICKHOUSE_PORT=9000 CLICKHOUSE_DB=default ./scripts/init-clickhouse.sh
-if [ $? -eq 0 ]; then
-    print_success "ClickHouse schema and materialized views initialized"
-else
-    print_warning "Failed to initialize ClickHouse schema. Check scripts/init-clickhouse.sh"
-fi
+./scripts/init-clickhouse.sh
+print_success "ClickHouse schema and materialized views initialized"
 
 
 
