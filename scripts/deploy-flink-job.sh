@@ -135,6 +135,8 @@ echo ""
 echo "Monitoring:"
 echo "- Flink Web UI: http://localhost:8081"
 echo "- Job Details: http://localhost:8081/#/job/$JOB_ID/overview"
+echo "- ClickHouse HTTP: http://localhost:8123"
+echo "- Superset Dashboard: http://localhost:8088"
 echo ""
 
 # Job 상태 확인
@@ -157,7 +159,7 @@ if [ "$JOB_STATUS" = "RUNNING" ]; then
     echo ""
     echo "Next steps:"
     echo "1. Make sure producers are running: ./scripts/start-producers.sh"
-    echo "2. Monitor CTR results in RedisInsight: http://localhost:8001"
+    echo "2. Monitor CTR results via Superset: http://localhost:8088 or ClickHouse HTTP: http://localhost:8123"
     echo "3. View job metrics in Flink UI: http://localhost:8081"
 elif [ "$JOB_STATUS" = "CREATED" ] || [ "$JOB_STATUS" = "INITIALIZING" ]; then
     print_warning "Job is initializing. Check status in a few moments."

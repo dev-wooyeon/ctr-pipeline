@@ -9,6 +9,7 @@ class EventDeserializationSchemaTest {
 
     @Test
     fun `deserializes valid event`() {
+        val epochMillis = 1704110400000L
         val payload = """
             {
               "event_id": "1",
@@ -23,6 +24,7 @@ class EventDeserializationSchemaTest {
 
         assertThat(event).isNotNull
         assertThat(event?.productId).isEqualTo("P123")
+        assertThat(event?.eventTimeMillisUtc()).isEqualTo(epochMillis)
         assertThat(event?.isValid()).isTrue()
     }
 
@@ -43,7 +45,7 @@ class EventDeserializationSchemaTest {
         val event = schema.deserialize(payload.toByteArray())
 
         assertThat(event).isNotNull
-        assertThat(event?.timestamp).isNotNull
+        assertThat(event?.timestamp).isEqualTo(epochMillis)
         assertThat(event?.eventTimeMillisUtc()).isEqualTo(epochMillis)
         assertThat(event?.sessionId).isEqualTo("session_1")
     }

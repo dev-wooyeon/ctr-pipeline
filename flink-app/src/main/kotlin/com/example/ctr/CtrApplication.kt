@@ -5,8 +5,6 @@ import com.example.ctr.config.AppConfig
 import com.example.ctr.infrastructure.flink.CtrJobPipelineBuilder
 import com.example.ctr.infrastructure.flink.FlinkEnvironmentFactory
 import com.example.ctr.infrastructure.flink.sink.ClickHouseSink
-import com.example.ctr.infrastructure.flink.sink.DuckDBSink
-import com.example.ctr.infrastructure.flink.sink.RedisSink
 import com.example.ctr.infrastructure.flink.source.KafkaSourceFactory
 import org.slf4j.LoggerFactory
 import kotlin.system.exitProcess
@@ -22,14 +20,10 @@ object CtrApplication {
 
             val config = AppConfig.load()
             val kafkaSourceFactory = KafkaSourceFactory(config.kafka)
-            val redisSink = RedisSink(config.redis)
-            val duckDBSink = DuckDBSink(config.duckdb)
             val clickHouseSink = ClickHouseSink(config.clickhouse)
             val flinkEnvironmentFactory = FlinkEnvironmentFactory(config.ctr.job)
             val pipelineBuilder = CtrJobPipelineBuilder(
                 kafkaSourceFactory,
-                redisSink,
-                duckDBSink,
                 clickHouseSink,
                 properties = config.ctr.job
             )

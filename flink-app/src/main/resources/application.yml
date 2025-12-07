@@ -5,16 +5,9 @@ kafka:
     click: clicks
   group-id: ctr-calculator-group
 
-redis:
-  host: localhost
-  port: 6379
-
 clickhouse:
   url: jdbc:clickhouse://localhost:8123/default
   driver: com.clickhouse.jdbc.ClickHouseDriver
-
-duckdb:
-  url: jdbc:duckdb:/tmp/ctr.duckdb
 
 ctr:
   job:

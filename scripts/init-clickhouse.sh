@@ -7,7 +7,19 @@ CLICKHOUSE_DB="${CLICKHOUSE_DB:-default}"
 
 echo "Initializing ClickHouse schema for CTR pipeline at ${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/${CLICKHOUSE_DB}"
 
-clickhouse-client --host "$CLICKHOUSE_HOST" --port "$CLICKHOUSE_PORT" --multiquery <<SQL
+CLICKHOUSE_CMD=("docker" "compose" "exec" "-T" "clickhouse" "clickhouse-client" "--host" "$CLICKHOUSE_HOST" "--port" "$CLICKHOUSE_PORT" "--multiquery")
+
+("${CLICKHOUSE_CMD[@]}") <<SQL
+CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.ctr_results (
+    product_id String,
+    ctr Float64,
+    impressions UInt64,
+    clicks UInt64,
+    window_start UInt64,
+    window_end UInt64
+) ENGINE = MergeTree()
+ORDER BY (window_end, product_id);
+
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.ctr_results_raw (
     product_id String,
     ctr Float64,

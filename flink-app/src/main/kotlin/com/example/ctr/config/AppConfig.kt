@@ -11,9 +11,7 @@ import java.io.InputStream
 class AppConfig {
 
     var kafka: KafkaProperties = KafkaProperties()
-    var redis: RedisProperties = RedisProperties()
     var clickhouse: ClickHouseProperties = ClickHouseProperties()
-    var duckdb: DuckDBProperties = DuckDBProperties()
     var ctr: CtrConfig = CtrConfig()
     var flink: FlinkConfig = FlinkConfig()
 

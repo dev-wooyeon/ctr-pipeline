@@ -6,6 +6,8 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    mem_limit: 256m
+    cpus: 0.25
 
   # Kafka Brokers
   kafka1:
@@ -23,6 +25,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    mem_limit: 512m
+    cpus: 0.5
 
   kafka2:
     image: confluentinc/cp-kafka:7.4.0
@@ -39,6 +43,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29093,PLAINTEXT_HOST://localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    mem_limit: 512m
+    cpus: 0.5
 
   kafka3:
     image: confluentinc/cp-kafka:7.4.0
@@ -55,6 +61,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:29094,PLAINTEXT_HOST://localhost:9094
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    mem_limit: 512m
+    cpus: 0.5
 
   # Kafka UI
   kafka-ui:
@@ -70,6 +78,8 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092,kafka2:29093,kafka3:29094
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    mem_limit: 256m
+    cpus: 0.25
 
   # Flink JobManager
   flink-jobmanager:
@@ -87,11 +97,12 @@ services:
         taskmanager.memory.process.size: 2048m
     volumes:
       - ./flink-app/build/libs:/opt/flink/usrlib
+    mem_limit: 512m
+    cpus: 0.5
 
   # Flink TaskManager
   flink-taskmanager:
     image: flink:1.18-scala_2.12-java17
-    container_name: flink-taskmanager
     depends_on:
       - flink-jobmanager
     command: taskmanager
@@ -105,38 +116,8 @@ services:
         taskmanager.memory.process.size: 2048m
     volumes:
       - ./flink-app/build/libs:/opt/flink/usrlib
-
-  # Redis
-  redis:
-    image: redis:7.0-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-
-  # RedisInsight
-  redis-insight:
-    image: redis/redisinsight:latest
-    container_name: redisinsight
-    ports:
-      - "5540:5540"
-    volumes:
-      - redisinsight:/data
-    restart: unless-stopped
-    depends_on:
-      - redis
-
-  serving-api:
-    build: ./serving-api
-    container_name: ctr-api
-    ports:
-      - "8000:8000"
-    environment:
-      REDIS_HOST: redis
-    depends_on:
-      - redis
+    mem_limit: 1024m
+    cpus: 0.75
 
   # ClickHouse
   clickhouse:
@@ -151,6 +132,8 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    mem_limit: 1024m
+    cpus: 0.75
 
   # Superset for ClickHouse visualization
   superset:
@@ -165,10 +148,9 @@ services:
       - superset-home:/app/superset_home
     depends_on:
       - clickhouse
+    mem_limit: 512m
+    cpus: 0.5
 
 volumes:
-  redis-data:
-  redisinsight:
   clickhouse-data:
-  duckdb-data:
   superset-home:

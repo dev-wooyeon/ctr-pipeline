@@ -47,10 +47,6 @@
     
     <!-- Database Loggers -->
     <logger name="com.clickhouse" level="WARN"/>
-    <logger name="org.duckdb" level="WARN"/>
-    
-    <!-- Redis Loggers -->
-    <logger name="redis.clients" level="WARN"/>
 
     <!-- Root Logger -->
     <root level="INFO">

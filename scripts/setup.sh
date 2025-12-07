@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "=== Kafka-Flink-Redis CTR Calculator Setup ==="
+echo "=== Kafka-Flink CTR Calculator Setup ==="
 
 # 전체 환경 셋업 스크립트
 
@@ -136,8 +136,14 @@ fi
 cd ..
 
 # Docker 서비스 시작
-print_step "Starting Docker services..."
-docker compose up -d
+FLINK_TASKMANAGER_INSTANCES=3
+TASK_MANAGER_SLOTS=2
+TOTAL_AVAILABLE_SLOTS=$((FLINK_TASKMANAGER_INSTANCES * TASK_MANAGER_SLOTS))
+print_step "Starting Docker services with $FLINK_TASKMANAGER_INSTANCES TaskManagers (≈$TOTAL_AVAILABLE_SLOTS slots)..."
+docker compose up -d --scale flink-taskmanager=$FLINK_TASKMANAGER_INSTANCES
+
+print_step "Ensuring Flink TaskManagers provide $TOTAL_AVAILABLE_SLOTS slots..."
+echo "Configured slots: $FLINK_TASKMANAGER_INSTANCES TM × $TASK_MANAGER_SLOTS slots = $TOTAL_AVAILABLE_SLOTS total slots"
 
 # 서비스 시작 대기
 print_step "Waiting for services to start..."
@@ -198,8 +204,8 @@ fi
 print_step "Verifying topics..."
 docker exec kafka1 kafka-topics --bootstrap-server kafka1:29092 --list
 
-# ClickHouse 테이블 생성
-print_step "Initializing ClickHouse table..."
+# ClickHouse schema 및 Materialized View 초기화
+print_step "Initializing ClickHouse schema and materialized views..."
 # Wait for ClickHouse to be ready
 for i in {1..30}; do
     if docker exec clickhouse clickhouse-client --query "SELECT 1" &> /dev/null; then
@@ -212,23 +218,12 @@ for i in {1..30}; do
     sleep 1
 done
 
-docker exec clickhouse clickhouse-client --query "
-CREATE TABLE IF NOT EXISTS default.ctr_results (
-    product_id String,
-    ctr Float64,
-    impressions UInt64,
-    clicks UInt64,
-    window_start UInt64,
-    window_end UInt64
-) ENGINE = MergeTree()
-ORDER BY (window_end, product_id);
-"
-
+chmod +x scripts/init-clickhouse.sh
+CLICKHOUSE_HOST=clickhouse CLICKHOUSE_PORT=9000 CLICKHOUSE_DB=default ./scripts/init-clickhouse.sh
 if [ $? -eq 0 ]; then
-    print_success "ClickHouse table 'ctr_results' created successfully"
+    print_success "ClickHouse schema and materialized views initialized"
 else
-    print_error "Failed to create ClickHouse table"
-    # Don't exit, just warn
+    print_warning "Failed to initialize ClickHouse schema. Check scripts/init-clickhouse.sh"
 fi
 
 
@@ -250,13 +245,13 @@ echo "Services Status:"
 echo "=================="
 echo "Kafka UI: http://localhost:8080"
 echo "Flink Web UI: http://localhost:8081"
-echo "RedisInsight: http://localhost:5540"
-echo "Fast API: http://localhost:8000"
+echo "ClickHouse HTTP: http://localhost:8123"
+echo "Superset Dashboard: http://localhost:8088"
 echo ""
 
 print_success "Setup completed successfully! The entire pipeline is running."
 echo ""
 echo "You can now:"
-echo "1. Monitor results in RedisInsight: http://localhost:5540"
-echo "2. View Flink Job in Web UI: http://localhost:8081"
-echo "3. Access Serving API: http://localhost:8000/docs"
+echo "1. Explore CTR materialized views via Superset: http://localhost:8088"
+echo "2. Query ClickHouse directly: http://localhost:8123"
+echo "3. View the running Flink job: http://localhost:8081"

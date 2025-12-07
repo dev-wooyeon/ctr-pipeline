@@ -38,8 +38,6 @@ dependencies {
     implementation("org.apache.flink:flink-connector-jdbc:3.1.2-1.18")
 
     implementation("com.clickhouse:clickhouse-jdbc:0.4.6")
-    implementation("org.duckdb:duckdb_jdbc:0.9.2")
-    implementation("redis.clients:jedis:5.1.0")
 
     implementation("com.fasterxml.jackson.core:jackson-core:$jacksonVersion")
     implementation("com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion")

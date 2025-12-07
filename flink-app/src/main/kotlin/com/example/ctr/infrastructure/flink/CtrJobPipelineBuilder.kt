@@ -7,8 +7,6 @@ import com.example.ctr.domain.model.EventCount
 import com.example.ctr.domain.service.CTRResultWindowProcessFunction
 import com.example.ctr.domain.service.EventCountAggregator
 import com.example.ctr.infrastructure.flink.sink.ClickHouseSink
-import com.example.ctr.infrastructure.flink.sink.DuckDBSink
-import com.example.ctr.infrastructure.flink.sink.RedisSink
 import com.example.ctr.infrastructure.flink.source.KafkaSourceFactory
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.functions.AggregateFunction
@@ -25,8 +23,6 @@ import java.util.Objects
 
 class CtrJobPipelineBuilder(
     private val kafkaSourceFactory: KafkaSourceFactory,
-    private val redisSink: RedisSink,
-    private val duckDBSink: DuckDBSink,
     private val clickHouseSink: ClickHouseSink,
     private val aggregator: AggregateFunction<Event, EventCount, EventCount> = EventCountAggregator(),
     private val windowFunction: ProcessWindowFunction<EventCount, CTRResult, String?, TimeWindow> = CTRResultWindowProcessFunction(),
@@ -39,8 +35,6 @@ class CtrJobPipelineBuilder(
 
         val ctrResults = buildAggregation(impressionStream, clickStream)
 
-        ctrResults.chainSink(redisSink.createSink(), "Redis", "redis-sink", slotSharingGroup = "sink-group")
-        ctrResults.chainSink(duckDBSink.createSink(), "DuckDB", "duckdb-sink", slotSharingGroup = "sink-group", parallelism = 1)
         ctrResults.chainSink(clickHouseSink.createSink(), "ClickHouse", "clickhouse-sink", slotSharingGroup = "sink-group")
 
         return ctrResults
