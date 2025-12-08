@@ -1,6 +1,22 @@
 jobmanager.rpc.address: flink-jobmanager
-taskmanager.numberOfTaskSlots: 1
-parallelism.default: 1
+taskmanager.numberOfTaskSlots: 2
+parallelism.default: 2
+jobmanager.memory.process.size: 1024m
+taskmanager.memory.process.size: 2048m
 
+# JVM Options to allow Kryo reflection on Java 17+
+env.java.opts: "--add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED"
+
+# Prometheus Metrics Reporter Configuration
+metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+metrics.reporter.prom.port: 9249
+
+# Standardize Metric Scopes for Grafana Compatibility
+metrics.scope.jm: jobmanager
+metrics.scope.jm.job: jobmanager.job
+metrics.scope.tm: taskmanager
+metrics.scope.tm.job: taskmanager.job
+metrics.scope.task: task
+metrics.scope.operator: operator
 blob.server.port: 6124
 query.server.port: 6125
