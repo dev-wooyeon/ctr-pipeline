@@ -1,17 +1,22 @@
 package com.example.ctr.infrastructure.flink
 
 import com.example.ctr.config.CtrJobProperties
+import com.example.ctr.config.KafkaProperties
 import com.example.ctr.domain.model.CTRResult
 import com.example.ctr.domain.model.Event
+import com.example.ctr.domain.model.DLQRecord
 import com.example.ctr.domain.model.EventCount
 import com.example.ctr.domain.model.ParsingResult
 import com.example.ctr.domain.service.CTRResultWindowProcessFunction
 import com.example.ctr.domain.service.EventCountAggregator
 import com.example.ctr.infrastructure.flink.sink.ClickHouseSink
 import com.example.ctr.infrastructure.flink.source.KafkaSourceFactory
+import com.fasterxml.jackson.databind.ObjectMapper
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.functions.AggregateFunction
+import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
@@ -21,12 +26,14 @@ import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer
 import org.apache.flink.util.Collector
 import org.apache.flink.util.OutputTag
 
 class CtrJobPipelineBuilder(
         private val kafkaSourceFactory: KafkaSourceFactory,
         private val clickHouseSink: ClickHouseSink,
+        private val kafkaProperties: KafkaProperties,
         private val aggregator: AggregateFunction<Event, EventCount, EventCount> =
                 EventCountAggregator(),
         private val windowFunction:
@@ -34,6 +41,10 @@ class CtrJobPipelineBuilder(
                 CTRResultWindowProcessFunction(),
         private val properties: CtrJobProperties
 ) {
+
+        companion object {
+                private val dlqObjectMapper = ObjectMapper()
+        }
 
         fun build(env: StreamExecutionEnvironment): DataStream<CTRResult> {
                 val impressionStream =
@@ -100,8 +111,8 @@ class CtrJobPipelineBuilder(
                                                         // We try to extract from result if
                                                         // possible, or use
                                                         // current time (or 0)
-                                                        result.result?.eventTimeMillisUtc()
-                                                                ?: System.currentTimeMillis()
+                                                        result.result?.eventTimeMillisUtcOrNull()
+                                        ?: System.currentTimeMillis()
                                                 },
                                         "$prefix Kafka Source"
                                 )
@@ -128,17 +139,38 @@ class CtrJobPipelineBuilder(
                                 .name("Split DLQ $prefix")
                                 .uid("split-dlq-$baseUid")
 
-                // Handle DLQ (For now, just log it. Ideally sink to a DLQ Topic or S3)
-                processedStream
+                val dlqMessageStream = processedStream
                         .getSideOutput(dlqTag)
-                        .map {
-                                "DLQ [$prefix]: ${it.errorMessage}, Data: ${it.rawData?.toString(Charsets.UTF_8)}"
-                        }
-                        .print()
+                        .map { createDlqMessage(topic, prefix, it) }
+
+                dlqMessageStream
+                        .addSink(createDlqSink(prefix))
                         .name("DLQ Sink $prefix")
                         .uid("dlq-sink-$baseUid")
 
                 return processedStream
+        }
+
+        private fun createDlqMessage(topic: String, prefix: String, result: ParsingResult<Event>): String {
+                val record = DLQRecord(
+                        source = prefix,
+                        rawTopic = topic,
+                        errorCode = classifyDlqError(result),
+                        errorMessage = result.errorMessage ?: "UNKNOWN",
+                        rawData = result.rawData?.toString(StandardCharsets.UTF_8),
+                        eventTimeMillisUtc = result.result?.eventTimeMillisUtcOrNull(),
+                        stackTrace = result.stackTrace
+                )
+                return dlqObjectMapper.writeValueAsString(record)
+        }
+
+        private fun classifyDlqError(result: ParsingResult<Event>): String {
+                val errorMessage = result.errorMessage?.lowercase() ?: return "UNKNOWN_ERROR"
+                return when {
+                        errorMessage.contains("invalid event data") -> "INVALID_EVENT"
+                        errorMessage.contains("deserializ") -> "DESERIALIZATION_ERROR"
+                        else -> "VALIDATION_ERROR"
+                }
         }
 
         private fun SingleOutputStreamOperator<CTRResult>.chainSink(
@@ -155,5 +187,13 @@ class CtrJobPipelineBuilder(
                                 .slotSharingGroup(slotSharingGroup)
                 // .disableChaining()
                 parallelism?.let { sinkOperator.setParallelism(it) }
+        }
+
+        private fun createDlqSink(prefix: String): SinkFunction<String> {
+                return FlinkKafkaProducer<String>(
+                        kafkaProperties.dlqTopic,
+                        SimpleStringSchema(),
+                        kafkaProperties.toProducerProperties()
+                )
         }
 }

@@ -14,7 +14,15 @@ class KafkaSourceFactory(private val kafkaProperties: KafkaProperties) {
                     .setBootstrapServers(kafkaProperties.bootstrapServers)
                     .setTopics(topic)
                     .setGroupId(groupId)
-                    .setStartingOffsets(OffsetsInitializer.latest())
+                    .setStartingOffsets(createOffsetsInitializer())
                     .setValueOnlyDeserializer(EventDeserializationSchema())
                     .build()
+
+    private fun createOffsetsInitializer(): OffsetsInitializer {
+        return when (kafkaProperties.offsetStrategy.lowercase()) {
+            "earliest" -> OffsetsInitializer.earliest()
+            "committed" -> OffsetsInitializer.committedOffsets()
+            else -> OffsetsInitializer.latest()
+        }
+    }
 }

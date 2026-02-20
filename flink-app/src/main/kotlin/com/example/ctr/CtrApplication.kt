@@ -19,12 +19,20 @@ object CtrApplication {
             log.info("Starting CTR Application...")
 
             val config = AppConfig.load()
+
+            if (!com.example.ctr.config.KafkaProperties.validateOffsetStrategy(config.kafka.offsetStrategy)) {
+                log.error("Invalid offset strategy: '${config.kafka.offsetStrategy}'. Valid values: latest, earliest, committed")
+                exitProcess(1)
+            }
+            log.info("Using offset strategy: ${config.kafka.offsetStrategy}")
+
             val kafkaSourceFactory = KafkaSourceFactory(config.kafka)
             val clickHouseSink = ClickHouseSink(config.clickhouse)
             val flinkEnvironmentFactory = FlinkEnvironmentFactory(config.ctr.job)
             val pipelineBuilder = CtrJobPipelineBuilder(
                 kafkaSourceFactory,
                 clickHouseSink,
+                config.kafka,
                 properties = config.ctr.job
             )
 

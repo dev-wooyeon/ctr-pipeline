@@ -20,12 +20,13 @@ class EventDeserializationSchemaTest {
             }
         """.trimIndent()
 
-        val event = schema.deserialize(payload.toByteArray())
+        val result = schema.deserialize(payload.toByteArray())
 
-        assertThat(event).isNotNull
-        assertThat(event?.productId).isEqualTo("P123")
-        assertThat(event?.eventTimeMillisUtc()).isEqualTo(epochMillis)
-        assertThat(event?.isValid()).isTrue()
+        assertThat(result.isSuccess()).isTrue()
+        assertThat(result.result).isNotNull
+        assertThat(result.result?.productId).isEqualTo("P123")
+        assertThat(result.result?.eventTimeMillisUtc()).isEqualTo(epochMillis)
+        assertThat(result.result?.isValid()).isTrue()
     }
 
     @Test
@@ -42,12 +43,13 @@ class EventDeserializationSchemaTest {
             }
         """.trimIndent()
 
-        val event = schema.deserialize(payload.toByteArray())
+        val result = schema.deserialize(payload.toByteArray())
 
-        assertThat(event).isNotNull
-        assertThat(event?.timestamp).isEqualTo(epochMillis)
-        assertThat(event?.eventTimeMillisUtc()).isEqualTo(epochMillis)
-        assertThat(event?.sessionId).isEqualTo("session_1")
+        assertThat(result.isSuccess()).isTrue()
+        assertThat(result.result).isNotNull
+        assertThat(result.result?.timestamp).isEqualTo(epochMillis)
+        assertThat(result.result?.eventTimeMillisUtc()).isEqualTo(epochMillis)
+        assertThat(result.result?.sessionId).isEqualTo("session_1")
     }
 
     @Test
@@ -62,7 +64,27 @@ class EventDeserializationSchemaTest {
             }
         """.trimIndent()
 
-        val event = schema.deserialize(payload.toByteArray())
-        assertThat(event).isNull()
+        val result = schema.deserialize(payload.toByteArray())
+        assertThat(result.isSuccess()).isFalse()
+        assertThat(result.result).isNull()
+    }
+
+    @Test
+    fun `deserializes missing timestamp into DLQ`() {
+        val payload = """
+            {
+              "event_id": "3",
+              "event_type": "impression",
+              "product_id": "P999",
+              "user_id": "U1"
+            }
+        """.trimIndent()
+
+        val result = schema.deserialize(payload.toByteArray())
+
+        assertThat(result.isSuccess()).isFalse()
+        assertThat(result.result).isNull()
+        assertThat(result.errorMessage).isEqualTo("Invalid event data")
+        assertThat(result.rawData).isNotNull
     }
 }
