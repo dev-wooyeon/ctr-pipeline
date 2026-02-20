@@ -41,7 +41,7 @@ fi
 
 # Kafka 클러스터 연결 확인
 print_step "Checking Kafka cluster connection..."
-if ! docker exec kafka1 kafka-topics --bootstrap-server kafka1:29092 --list | grep -E "(impressions|clicks)" &> /dev/null; then
+if ! docker exec kafka2 kafka-topics --bootstrap-server kafka2:29093 --list | grep -E "(impressions|clicks)" &> /dev/null; then
     print_error "Required Kafka topics not found. Please run ./scripts/create-topics.sh first"
     exit 1
 fi
@@ -57,6 +57,8 @@ print_success "Existing producers stopped"
 
 # 로그 디렉토리 생성
 mkdir -p ../logs
+PID_FILE="../logs/producer_pids.txt"
+: > "$PID_FILE"
 
 # --- MULTI-INSTANCE PRODUCERS START (High Load) ---
 NUM_INSTANCES=4
@@ -66,6 +68,7 @@ print_step "Starting impression producer ($NUM_INSTANCES instances)..."
 for i in $(seq 1 $NUM_INSTANCES); do
     $PYTHON_CMD impression_producer.py > ../logs/impression_producer_$i.log 2>&1 &
     PID=$!
+    echo "impression $i $PID" >> "$PID_FILE"
     print_success "Impression producer #$i started (PID: $PID)"
 done
 
@@ -74,6 +77,7 @@ print_step "Starting click producer ($NUM_INSTANCES instances)..."
 for i in $(seq 1 $NUM_INSTANCES); do
     $PYTHON_CMD click_producer.py > ../logs/click_producer_$i.log 2>&1 &
     PID=$!
+    echo "click $i $PID" >> "$PID_FILE"
     print_success "Click producer #$i started (PID: $PID)"
 done
 # --------------------------------------------------
@@ -88,7 +92,7 @@ echo "- Click Producer: logs/click_producer_*.log"
 echo ""
 echo "Monitoring commands:"
 echo "- View logs: tail -f logs/impression_producer_1.log"
-echo "- View live topics: docker exec kafka1 kafka-console-consumer --bootstrap-server localhost:9092 --topic impressions --from-beginning"
+echo "- View live topics: docker exec kafka2 kafka-console-consumer --bootstrap-server kafka2:29093 --topic impressions --from-beginning"
 echo ""
 echo "To stop producers: ./scripts/stop-producers.sh"
 echo ""

@@ -24,10 +24,8 @@ print_warning() {
 # PID 파일에서 프로세스 ID 읽기
 print_step "Reading producer PIDs..."
 if [ -f "logs/producer_pids.txt" ]; then
-    IMPRESSION_PID=$(grep "Impression Producer PID:" logs/producer_pids.txt | awk '{print $4}')
-    CLICK_PID=$(grep "Click Producer PID:" logs/producer_pids.txt | awk '{print $4}')
-    
-    echo "Found PIDs - Impression: $IMPRESSION_PID, Click: $CLICK_PID"
+    mapfile -t PRODUCER_PIDS < <(awk '{print $3}' logs/producer_pids.txt)
+    echo "Found ${#PRODUCER_PIDS[@]} producer processes from pid file"
 else
     print_warning "PID file not found. Trying to find producers by name..."
 fi
@@ -35,34 +33,32 @@ fi
 # 프로세스 이름으로 종료 시도
 print_step "Stopping producer processes..."
 
-# impression_producer.py 프로세스 종료
-KILLED_IMPRESSION=0
-if [ ! -z "$IMPRESSION_PID" ] && ps -p $IMPRESSION_PID > /dev/null 2>&1; then
-    kill $IMPRESSION_PID
-    KILLED_IMPRESSION=1
-    print_success "Impression producer (PID: $IMPRESSION_PID) stopped"
-else
-    # 프로세스 이름으로 찾아서 종료
-    PIDS=$(pgrep -f "impression_producer.py")
-    if [ ! -z "$PIDS" ]; then
-        echo $PIDS | xargs kill
-        KILLED_IMPRESSION=1
-        print_success "Impression producer processes stopped"
-    fi
+KILLED_COUNT=0
+
+if [ "${#PRODUCER_PIDS[@]}" -gt 0 ]; then
+    for PID in "${PRODUCER_PIDS[@]}"; do
+        if [ -n "$PID" ] && ps -p "$PID" > /dev/null 2>&1; then
+            kill "$PID" && KILLED_COUNT=$((KILLED_COUNT + 1))
+            print_success "Producer process (PID: $PID) stopped"
+        fi
+    done
 fi
 
-# click_producer.py 프로세스 종료  
-KILLED_CLICK=0
-if [ ! -z "$CLICK_PID" ] && ps -p $CLICK_PID > /dev/null 2>&1; then
-    kill $CLICK_PID
-    KILLED_CLICK=1
-    print_success "Click producer (PID: $CLICK_PID) stopped"
-else
+if [ "$KILLED_COUNT" -eq 0 ]; then
     # 프로세스 이름으로 찾아서 종료
+    PIDS=$(pgrep -f "impression_producer.py")
+    if [ -n "$PIDS" ]; then
+        kill_count=$(echo "$PIDS" | wc -w)
+        echo "$PIDS" | xargs kill
+        KILLED_COUNT=$((KILLED_COUNT + kill_count))
+        print_success "Impression producer processes stopped"
+    fi
+
     PIDS=$(pgrep -f "click_producer.py")
-    if [ ! -z "$PIDS" ]; then
-        echo $PIDS | xargs kill
-        KILLED_CLICK=1
+    if [ -n "$PIDS" ]; then
+        kill_count=$(echo "$PIDS" | wc -w)
+        echo "$PIDS" | xargs kill
+        KILLED_COUNT=$((KILLED_COUNT + kill_count))
         print_success "Click producer processes stopped"
     fi
 fi
@@ -97,8 +93,8 @@ FINAL_CLICK=$(pgrep -f "click_producer.py")
 
 if [ -z "$FINAL_IMPRESSION" ] && [ -z "$FINAL_CLICK" ]; then
     print_success "All producer processes stopped successfully"
-    
-    if [ $KILLED_IMPRESSION -eq 0 ] && [ $KILLED_CLICK -eq 0 ]; then
+
+    if [ "$KILLED_COUNT" -eq 0 ]; then
         print_warning "No producer processes were found running"
     fi
 else

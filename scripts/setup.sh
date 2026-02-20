@@ -10,6 +10,15 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+FORCE_NETWORK_PRUNE=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --force-prune)
+            FORCE_NETWORK_PRUNE=true
+            ;;
+    esac
+done
 
 print_step() {
     echo -e "${BLUE}[STEP]${NC} $1"
@@ -59,6 +68,20 @@ fi
 
 print_success "Python 3 is installed"
 
+# Local environment variables (.env) load
+if [ -f ".env" ]; then
+    # shellcheck disable=SC1091
+    set -a
+    source .env
+    set +a
+    print_success "Loaded environment variables from .env"
+elif [ -f ".env.example" ]; then
+    print_warning "No .env file found. You can copy .env.example to .env and fill required values."
+fi
+
+: "${SUPERSET_SECRET_KEY:?Please set SUPERSET_SECRET_KEY (export in shell or create .env)}"
+: "${GF_SECURITY_ADMIN_PASSWORD:?Please set GF_SECURITY_ADMIN_PASSWORD (export in shell or create .env)}"
+
 # JDK 17 고정 (macOS: /usr/libexec/java_home 사용)
 JAVA_17_HOME=$(/usr/libexec/java_home -v 17 2>/dev/null)
 if [ -n "$JAVA_17_HOME" ]; then
@@ -87,10 +110,14 @@ print_step "Stopping and removing existing containers..."
 docker compose down -v
 print_success "Existing containers stopped and removed"
 
-# 네트워크 정리
-print_step "Cleaning up Docker networks..."
-docker network prune -f &> /dev/null
-print_success "Docker networks cleaned up"
+# 네트워크 정리 (옵션)
+if [ "$FORCE_NETWORK_PRUNE" = true ]; then
+    print_step "Cleaning up Docker networks..."
+    docker network prune -f &> /dev/null
+    print_success "Docker networks cleaned up"
+else
+    print_warning "Skipping docker network prune. Use --force-prune when you explicitly want this."
+fi
 
 # Flink 애플리케이션 빌드 (Gradle)
 if [ -n "$GRADLE_CMD" ]; then
@@ -122,7 +149,7 @@ if command -v uv &> /dev/null; then
     fi
 elif [ -f "requirements.txt" ]; then
     print_step "Using pip for dependency management..."
-    pip3 install -r requirements.txt
+    python3 -m pip install -r requirements.txt
     if [ $? -eq 0 ]; then
         print_success "Python dependencies installed with pip"
     else
