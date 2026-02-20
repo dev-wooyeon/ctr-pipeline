@@ -31,7 +31,10 @@ data class Event(
 
     fun isValid(): Boolean = hasProductId() && timestamp != null && VALID_EVENT_TYPES.contains(eventType)
 
-    fun eventTimeMillisUtc(): Long = timestamp ?: 0L
+    fun eventTimeMillisUtc(): Long = eventTimeMillisUtcOrNull()
+            ?: throw IllegalStateException("Event timestamp is required. event_id=${eventId}, product_id=${productId}, event_type=${eventType}")
+
+    fun eventTimeMillisUtcOrNull(): Long? = timestamp
 
     companion object {
         private val VALID_EVENT_TYPES: Set<String> = setOf("view", "impression", "click")

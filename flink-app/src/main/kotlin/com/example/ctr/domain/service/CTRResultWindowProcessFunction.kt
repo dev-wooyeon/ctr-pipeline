@@ -15,7 +15,15 @@ class CTRResultWindowProcessFunction : ProcessWindowFunction<EventCount, CTRResu
         elements: Iterable<EventCount>,
         out: Collector<CTRResult>
     ) {
-        val counts = elements.iterator().next()
+        val iterator = elements.iterator()
+        if (!iterator.hasNext()) {
+            throw IllegalStateException("No aggregated event counts for product=${key ?: "<unknown>"} in window=${context.window()}")
+        }
+
+        val counts = elements.fold(EventCount.initial()) { acc, eventCount ->
+            EventCount.merge(acc, eventCount)
+        }
+
         val result = CTRResult.calculate(
             key ?: "<unknown>",
             counts.impressions,
