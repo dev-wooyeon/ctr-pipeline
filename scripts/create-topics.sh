@@ -23,7 +23,7 @@ print_error() {
 
 # Kafka 클러스터 연결 확인
 print_step "Checking Kafka cluster connection..."
-if ! docker exec kafka1 kafka-topics --bootstrap-server kafka1:29092 --list &> /dev/null; then
+if ! docker exec kafka2 kafka-topics --bootstrap-server kafka2:29093 --list &> /dev/null; then
     print_error "Cannot connect to Kafka cluster. Make sure Kafka is running."
     exit 1
 fi
@@ -32,9 +32,9 @@ print_success "Connected to Kafka cluster"
 
 # impressions 토픽 생성
 print_step "Creating 'impressions' topic..."
-docker exec kafka1 kafka-topics \
+docker exec kafka2 kafka-topics \
     --create \
-    --bootstrap-server kafka1:29092 \
+    --bootstrap-server kafka2:29093 \
     --replication-factor 3 \
     --partitions 3 \
     --topic impressions \
@@ -47,11 +47,11 @@ else
     exit 1
 fi
 
-# clicks 토픽 생성  
+# clicks 토픽 생성
 print_step "Creating 'clicks' topic..."
-docker exec kafka1 kafka-topics \
+docker exec kafka2 kafka-topics \
     --create \
-    --bootstrap-server kafka1:29092 \
+    --bootstrap-server kafka2:29093 \
     --replication-factor 3 \
     --partitions 3 \
     --topic clicks \
@@ -64,19 +64,39 @@ else
     exit 1
 fi
 
+print_step "Creating 'dlq-events' topic..."
+docker exec kafka2 kafka-topics \
+    --create \
+    --bootstrap-server kafka2:29093 \
+    --replication-factor 3 \
+    --partitions 3 \
+    --topic dlq-events \
+    --if-not-exists
+
+if [ $? -eq 0 ]; then
+    print_success "Topic 'dlq-events' created successfully"
+else
+    print_error "Failed to create topic 'dlq-events'"
+    exit 1
+fi
+
 # 토픽 리스트 확인
 print_step "Listing all topics..."
-docker exec kafka1 kafka-topics --bootstrap-server kafka1:29092 --list
+docker exec kafka2 kafka-topics --bootstrap-server kafka2:29093 --list
 
 # 토픽 상세 정보 확인
 print_step "Topic details:"
 echo ""
 echo "Impressions topic:"
-docker exec kafka1 kafka-topics --bootstrap-server kafka1:29092 --describe --topic impressions
+docker exec kafka2 kafka-topics --bootstrap-server kafka2:29093 --describe --topic impressions
 
 echo ""
 echo "Clicks topic:"
-docker exec kafka1 kafka-topics --bootstrap-server kafka1:29092 --describe --topic clicks
+docker exec kafka2 kafka-topics --bootstrap-server kafka2:29093 --describe --topic clicks
+
+echo ""
+echo "DLQ Events topic:"
+docker exec kafka2 kafka-topics --bootstrap-server kafka2:29093 --describe --topic dlq-events
 
 print_success "All topics created and configured successfully!"
 echo ""

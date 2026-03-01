@@ -4,6 +4,8 @@ kafka:
     impression: impressions
     click: clicks
   group-id: ctr-calculator-group
+  offset-strategy: committed
+  dlq-topic: dlq-events
 
 clickhouse:
   url: jdbc:clickhouse://clickhouse:8123/default
@@ -25,6 +27,3 @@ ctr:
     externalized-checkpoint-cleanup: RETAIN_ON_CANCELLATION
     restart-attempts: 3
     restart-delay-ms: 10000
-
-flink:
-  parallelism: 2

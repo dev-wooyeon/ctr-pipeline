@@ -7,3 +7,6 @@ scrape_configs:
     static_configs:
       - targets: ['flink-jobmanager:9249', 'flink-taskmanager:9249']
     metrics_path: /
+
+rule_files:
+  - /etc/prometheus/alerts/ctr_pipeline_rules.yml

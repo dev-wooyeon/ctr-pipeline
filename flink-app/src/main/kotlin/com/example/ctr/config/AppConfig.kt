@@ -5,46 +5,24 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import jakarta.validation.ConstraintViolation
+import jakarta.validation.Validation
+import jakarta.validation.Valid
 import java.io.InputStream
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 class AppConfig {
 
+    @field:Valid
     var kafka: KafkaProperties = KafkaProperties()
+    @field:Valid
     var clickhouse: ClickHouseProperties = ClickHouseProperties()
+    @field:Valid
     var ctr: CtrConfig = CtrConfig()
-    var flink: FlinkConfig = FlinkConfig()
 
     class CtrConfig {
+        @field:Valid
         var job: CtrJobProperties = CtrJobProperties()
-    }
-
-    class FlinkConfig {
-        var parallelism: Int = 1
-        var checkpoint: CheckpointConfig = CheckpointConfig()
-        var stateBackend: StateBackendConfig = StateBackendConfig()
-        var restartStrategy: RestartStrategyConfig = RestartStrategyConfig()
-
-        class CheckpointConfig {
-            var enabled: Boolean = true
-            var interval: Long = 60_000L
-            var timeout: Long = 600_000L
-            var minPause: Long = 5_000L
-            var maxConcurrent: Int = 1
-            var mode: String = "EXACTLY_ONCE"
-        }
-
-        class StateBackendConfig {
-            var type: String = "filesystem"
-            var checkpointDir: String = ""
-            var savepointDir: String = ""
-        }
-
-        class RestartStrategyConfig {
-            var type: String = "fixed-delay"
-            var attempts: Int = 3
-            var delay: Long = 10_000L
-        }
     }
 
     companion object {
@@ -63,9 +41,20 @@ class AppConfig {
                     throw RuntimeException("Configuration file not found (application-local.yml or application.yml)")
                 }
 
-                return mapper.readValue(inputStream, AppConfig::class.java)
+                return mapper.readValue(inputStream, AppConfig::class.java).also { validate(it) }
             } catch (ex: Exception) {
                 throw RuntimeException("Failed to load configuration", ex)
+            }
+        }
+
+        private fun validate(config: AppConfig) {
+            val validator = Validation.buildDefaultValidatorFactory().validator
+            val violations: Set<ConstraintViolation<AppConfig>> = validator.validate(config)
+            if (violations.isNotEmpty()) {
+                val errorMessage = violations
+                    .sortedBy { it.propertyPath.toString() }
+                    .joinToString("\n") { "${it.propertyPath}: ${it.message}" }
+                throw IllegalArgumentException("Invalid application configuration:\n$errorMessage")
             }
         }
     }

@@ -1,0 +1,32 @@
+groups:
+  - name: ctr-pipeline
+    rules:
+      - alert: FlinkJobNotRunning
+        expr: up{job="flink"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Flink process is not reachable"
+          description: "Prometheus cannot scrape Flink taskmanager/jobmanager endpoint for more than 1m."
+          runbook_url: "./docs/RUNBOOK.md#flinkjobnotrunning"
+
+      - alert: LowCTRIngestionRate
+        expr: sum(rate(flink_taskmanager_job_task_numRecordsInPerSecond{job_name=~".*"}[5m])) < 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CTR pipeline input rate is low"
+          description: "Average CTR input TPS is below 1 for 10m. Verify producers and Kafka topics."
+          runbook_url: "./docs/RUNBOOK.md#lowctringestionrate"
+
+      - alert: HighTaskException
+        expr: sum(rate(flink_taskmanager_job_task_numRecordsOutExceptionsPerSecond{job_name=~".*"}[5m])) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Flink task is producing many output exceptions"
+          description: "Task exception rate exceeds threshold. Inspect DLQ topic and job logs."
+          runbook_url: "./docs/RUNBOOK.md#hightaskexception"

@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.ctr_results_raw (
     window_start DateTime64(3),
     window_end DateTime64(3),
     inserted_at DateTime64(3) DEFAULT now64(3)
-) ENGINE = MergeTree()
+) ENGINE = ReplacingMergeTree(inserted_at)
 PARTITION BY toYYYYMM(window_end)
 ORDER BY (window_end, product_id)
 SETTINGS index_granularity = 8192;

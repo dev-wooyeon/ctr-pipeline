@@ -3,6 +3,7 @@ package com.example.ctr.infrastructure.flink.sink
 import com.example.ctr.config.ClickHouseProperties
 import com.example.ctr.domain.model.CTRResult
 import java.sql.PreparedStatement
+import java.sql.Timestamp
 import org.apache.flink.connector.jdbc.JdbcConnectionOptions
 import org.apache.flink.connector.jdbc.JdbcExecutionOptions
 import org.apache.flink.connector.jdbc.JdbcSink
@@ -10,6 +11,11 @@ import org.apache.flink.connector.jdbc.JdbcStatementBuilder
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
 
 class ClickHouseSink(private val clickHouseProperties: ClickHouseProperties) {
+
+    // Delivery semantics:
+    // - Checkpointing in the job is enabled, but JDBC sink is currently at-least-once.
+    // - Duplicate rows can appear on retries/restarts.
+    // - Idempotent cleanup must be handled by downstream dedupe logic if strict correctness is required.
 
     fun createSink(): SinkFunction<CTRResult> =
             JdbcSink.sink(
@@ -41,8 +47,8 @@ class ClickHouseSink(private val clickHouseProperties: ClickHouseProperties) {
             ps.setDouble(IDX_CTR, ctrResult.ctr)
             ps.setLong(IDX_IMPRESSIONS, ctrResult.impressions)
             ps.setLong(IDX_CLICKS, ctrResult.clicks)
-            ps.setLong(IDX_WINDOW_START, ctrResult.windowStart)
-            ps.setLong(IDX_WINDOW_END, ctrResult.windowEnd)
+            ps.setTimestamp(IDX_WINDOW_START, Timestamp(ctrResult.windowStart))
+            ps.setTimestamp(IDX_WINDOW_END, Timestamp(ctrResult.windowEnd))
         }
     }
 }
