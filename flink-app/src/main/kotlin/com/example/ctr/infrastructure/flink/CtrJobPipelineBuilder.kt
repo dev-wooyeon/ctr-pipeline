@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.functions.AggregateFunction
+import org.apache.flink.api.common.functions.MapFunction
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
@@ -44,6 +45,41 @@ class CtrJobPipelineBuilder(
 
         companion object {
                 private val dlqObjectMapper = ObjectMapper()
+
+                private class DlqMessageMapper(
+                        private val topic: String,
+                        private val prefix: String
+                ) : MapFunction<ParsingResult<Event>, String> {
+                        override fun map(value: ParsingResult<Event>): String {
+                                return createDlqMessage(topic, prefix, value)
+                        }
+                }
+
+                private fun createDlqMessage(
+                        topic: String,
+                        prefix: String,
+                        result: ParsingResult<Event>
+                ): String {
+                        val record = DLQRecord(
+                                source = prefix,
+                                rawTopic = topic,
+                                errorCode = classifyDlqError(result),
+                                errorMessage = result.errorMessage ?: "UNKNOWN",
+                                rawData = result.rawData?.toString(StandardCharsets.UTF_8),
+                                eventTimeMillisUtc = result.result?.eventTimeMillisUtcOrNull(),
+                                stackTrace = result.stackTrace
+                        )
+                        return dlqObjectMapper.writeValueAsString(record)
+                }
+
+                private fun classifyDlqError(result: ParsingResult<Event>): String {
+                        val errorMessage = result.errorMessage?.lowercase() ?: return "UNKNOWN_ERROR"
+                        return when {
+                                errorMessage.contains("invalid event data") -> "INVALID_EVENT"
+                                errorMessage.contains("deserializ") -> "DESERIALIZATION_ERROR"
+                                else -> "VALIDATION_ERROR"
+                        }
+                }
         }
 
         fun build(env: StreamExecutionEnvironment): DataStream<CTRResult> {
@@ -141,7 +177,7 @@ class CtrJobPipelineBuilder(
 
                 val dlqMessageStream = processedStream
                         .getSideOutput(dlqTag)
-                        .map { createDlqMessage(topic, prefix, it) }
+                        .map(DlqMessageMapper(topic, prefix))
 
                 dlqMessageStream
                         .addSink(createDlqSink(prefix))
@@ -149,28 +185,6 @@ class CtrJobPipelineBuilder(
                         .uid("dlq-sink-$baseUid")
 
                 return processedStream
-        }
-
-        private fun createDlqMessage(topic: String, prefix: String, result: ParsingResult<Event>): String {
-                val record = DLQRecord(
-                        source = prefix,
-                        rawTopic = topic,
-                        errorCode = classifyDlqError(result),
-                        errorMessage = result.errorMessage ?: "UNKNOWN",
-                        rawData = result.rawData?.toString(StandardCharsets.UTF_8),
-                        eventTimeMillisUtc = result.result?.eventTimeMillisUtcOrNull(),
-                        stackTrace = result.stackTrace
-                )
-                return dlqObjectMapper.writeValueAsString(record)
-        }
-
-        private fun classifyDlqError(result: ParsingResult<Event>): String {
-                val errorMessage = result.errorMessage?.lowercase() ?: return "UNKNOWN_ERROR"
-                return when {
-                        errorMessage.contains("invalid event data") -> "INVALID_EVENT"
-                        errorMessage.contains("deserializ") -> "DESERIALIZATION_ERROR"
-                        else -> "VALIDATION_ERROR"
-                }
         }
 
         private fun SingleOutputStreamOperator<CTRResult>.chainSink(

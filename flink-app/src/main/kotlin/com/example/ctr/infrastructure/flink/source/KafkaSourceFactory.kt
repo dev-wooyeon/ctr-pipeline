@@ -6,6 +6,7 @@ import com.example.ctr.domain.model.ParsingResult
 import com.example.ctr.infrastructure.flink.source.deserializer.EventDeserializationSchema
 import org.apache.flink.connector.kafka.source.KafkaSource
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer
+import org.apache.kafka.clients.consumer.OffsetResetStrategy
 
 class KafkaSourceFactory(private val kafkaProperties: KafkaProperties) {
 
@@ -21,7 +22,7 @@ class KafkaSourceFactory(private val kafkaProperties: KafkaProperties) {
     private fun createOffsetsInitializer(): OffsetsInitializer {
         return when (kafkaProperties.offsetStrategy.lowercase()) {
             "earliest" -> OffsetsInitializer.earliest()
-            "committed" -> OffsetsInitializer.committedOffsets()
+            "committed" -> OffsetsInitializer.committedOffsets(OffsetResetStrategy.LATEST)
             else -> OffsetsInitializer.latest()
         }
     }

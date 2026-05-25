@@ -2,7 +2,7 @@ package com.example.ctr.application
 
 import com.example.ctr.infrastructure.flink.CtrJobPipelineBuilder
 import com.example.ctr.infrastructure.flink.FlinkEnvironmentFactory
-import org.apache.flink.client.program.JobClient
+import org.apache.flink.core.execution.JobClient
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
@@ -31,10 +31,7 @@ class CtrJobService(
             val client = executionEnv.executeAsync("CTR Calculator Job")
             this.jobClient = client
             log.info("Flink job submitted: ${client.jobID}")
-
-            log.info("Waiting for streaming job to finish...")
-            client.jobExecutionResult.get()
-            log.info("Flink job completed")
+            log.info("Streaming job submitted successfully")
         } catch (e: Exception) {
             log.error("Failed to execute Flink job", e)
             throw RuntimeException("Flink job execution failed", e)

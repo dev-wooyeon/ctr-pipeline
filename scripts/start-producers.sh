@@ -66,7 +66,7 @@ NUM_INSTANCES=4
 # Impression Producers
 print_step "Starting impression producer ($NUM_INSTANCES instances)..."
 for i in $(seq 1 $NUM_INSTANCES); do
-    $PYTHON_CMD impression_producer.py > ../logs/impression_producer_$i.log 2>&1 &
+    PYTHONUNBUFFERED=1 nohup $PYTHON_CMD impression_producer.py > ../logs/impression_producer_$i.log 2>&1 &
     PID=$!
     echo "impression $i $PID" >> "$PID_FILE"
     print_success "Impression producer #$i started (PID: $PID)"
@@ -75,7 +75,7 @@ done
 # Click Producers
 print_step "Starting click producer ($NUM_INSTANCES instances)..."
 for i in $(seq 1 $NUM_INSTANCES); do
-    $PYTHON_CMD click_producer.py > ../logs/click_producer_$i.log 2>&1 &
+    PYTHONUNBUFFERED=1 nohup $PYTHON_CMD click_producer.py > ../logs/click_producer_$i.log 2>&1 &
     PID=$!
     echo "click $i $PID" >> "$PID_FILE"
     print_success "Click producer #$i started (PID: $PID)"
