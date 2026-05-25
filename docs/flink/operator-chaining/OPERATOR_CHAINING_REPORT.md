@@ -304,8 +304,8 @@ Context Switch:
 
 ## 📞 참고 자료
 
-- **문서**: `docs/OPERATOR_CHAINING_DEEP_DIVE.md`
-- **코드**: `flink-app/src/main/java/com/example/ctr/infrastructure/flink/CtrJobPipelineBuilder.java`
+- **문서**: `docs/flink/operator-chaining/OPERATOR_CHAINING_DEEP_DIVE.md`
+- **코드**: `flink-app/src/main/kotlin/com/example/ctr/infrastructure/flink/CtrJobPipelineBuilder.kt`
 - **Flink 공식 문서**: https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/datastream/operators/overview/#task-chaining-and-resource-groups
 
 ---

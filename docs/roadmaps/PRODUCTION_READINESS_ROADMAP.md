@@ -2002,7 +2002,7 @@ python load-generator.py --events-per-second 100000 --duration 300
 
 ### P3-2: Operator Chaining 최적화
 
-**Task**: 이미 작성된 문서 (`docs/OPERATOR_CHAINING_*.md`) 기반으로 최적화 적용
+**Task**: 이미 작성된 문서 (`docs/flink/operator-chaining/OPERATOR_CHAINING_*.md`) 기반으로 최적화 적용
 
 **현재 chaining 상태 분석**:
 ```bash

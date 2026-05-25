@@ -87,7 +87,7 @@ kotlin {
 
 **파일:**
 - `scripts/init-clickhouse.sh` (새로 생성)
-- `docs/CLICKHOUSE_MATERIALIZED_VIEW.md` (새로 생성)
+- `docs/architecture/CLICKHOUSE_MATERIALIZED_VIEW.md` (새로 생성)
 
 ---
 
@@ -371,11 +371,11 @@ GROUP BY product_id;
 
 **수정할 문서:**
 - `README.md`: 아키텍처 다이어그램, 기술 스택, API 엔드포인트 섹션 수정
-- `docs/OPERATOR_CHAINING.md`: Kotlin 코드 예시로 업데이트
+- `docs/flink/operator-chaining/OPERATOR_CHAINING.md`: Kotlin 코드 예시로 업데이트
 - 새 문서 생성:
-  - `docs/KOTLIN_MIGRATION_GUIDE.md`
-  - `docs/CLICKHOUSE_MATERIALIZED_VIEW.md`
-  - `docs/PERFORMANCE_COMPARISON.md` (Redis vs Materialized View)
+  - `docs/migrations/KOTLIN_MIGRATION_GUIDE.md`
+  - `docs/architecture/CLICKHOUSE_MATERIALIZED_VIEW.md`
+  - `docs/architecture/PERFORMANCE_COMPARISON.md` (Redis vs Materialized View)
 
 #### 6.2 테스트 업데이트
 

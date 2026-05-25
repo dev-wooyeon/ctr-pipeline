@@ -2061,7 +2061,7 @@ spec:
   duration: "5m"
 ```
 
-**결과 문서화** (`docs/CHAOS_EXPERIMENTS_PROD.md`):
+**결과 문서화** (`docs/operations/CHAOS_EXPERIMENTS_PROD.md`):
 
 ```markdown
 # Chaos Engineering - Production Environment
@@ -2275,7 +2275,7 @@ kubectl top pods -n flink-ctr
 
 #### Task 4.3: 운영 일지 작성
 
-**템플릿** (`docs/OPERATIONS_LOG.md`):
+**템플릿** (`docs/operations/OPERATIONS_LOG.md`):
 
 ```markdown
 # Operations Log
@@ -2369,7 +2369,7 @@ kubectl top pods -n flink-ctr
    clickhouse.batch-interval-ms: 500  # 200 → 500
    ```
 
-**문서화** (`docs/PERFORMANCE_TUNING.md`)
+**문서화** (`docs/flink/PERFORMANCE_TUNING.md`)
 
 **예상 시간**: 12시간
 

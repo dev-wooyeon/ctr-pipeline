@@ -1,6 +1,4 @@
-# Portfolio Roadmap: Backend Engineer → Data Engineer
-
-**목표**: 시니어 데이터 엔지니어가 보고 "이 사람 같이 일하고 싶다" 생각하게 만들기
+# Portfolio Roadmap: Backend Engineer → Data Engineer**목표**: 시니어 데이터 엔지니어가 보고 "이 사람 같이 일하고 싶다" 생각하게 만들기
 
 **기간**: 3개월 (주말 + 평일 저녁 2-3시간)
 
@@ -119,11 +117,11 @@ cd flink-app
 
 ## 📚 Architecture Decisions
 
-상세한 기술 결정은 [docs/ADR](docs/adr/) 참고
+상세한 기술 결정은 `docs/architecture/`, `docs/migrations/` 참고
 
-- [ADR-001: Why Kotlin over Java](docs/adr/001-kotlin-migration.md)
-- [ADR-002: State Backend Selection](docs/adr/002-state-backend.md)
-- [ADR-003: ClickHouse vs Redis](docs/adr/003-storage-choice.md)
+- [Kotlin Migration Guide](../migrations/KOTLIN_MIGRATION_GUIDE.md)
+- [DuckDB Removal Decision](../architecture/WHY_REMOVE_DUCKDB.md)
+- [ClickHouse Materialized View Design](../architecture/CLICKHOUSE_MATERIALIZED_VIEW.md)
 
 ## 🔧 What I Learned
 
@@ -554,7 +552,7 @@ python performance-test/load_generator.py --rate 100000 --duration 300
 - Backpressure
 - Checkpoint duration
 
-**결과 문서**: `docs/BENCHMARK_RESULTS.md`
+**결과 문서**: `docs/flink/BENCHMARK_RESULTS.md`
 
 ```markdown
 # Performance Benchmark Results
@@ -864,7 +862,7 @@ open flink-app/build/reports/jacoco/test/html/index.html
 
 #### ADR-001: Why Kotlin over Java
 
-**파일**: `docs/adr/001-kotlin-migration.md`
+**파일**: `docs/architecture/adr/001-kotlin-migration.md`
 
 ```markdown
 # ADR-001: Kotlin으로 마이그레이션
@@ -917,7 +915,7 @@ Kotlin의 null safety가 streaming 애플리케이션에서 특히 유용함.
 
 #### ADR-002: ClickHouse vs Redis
 
-**파일**: `docs/adr/002-storage-choice.md`
+**파일**: `docs/architecture/adr/002-storage-choice.md`
 
 ```markdown
 # ADR-002: ClickHouse 선택 (Redis 제거)
@@ -983,7 +981,7 @@ ClickHouse 단일 storage로 간다.
 
 #### ADR-003: State Backend Selection
 
-**파일**: `docs/adr/003-state-backend.md`
+**파일**: `docs/architecture/adr/003-state-backend.md`
 
 ```markdown
 # ADR-003: State Backend Selection
@@ -1060,7 +1058,7 @@ docker-compose up -d flink-taskmanager
 # 5. 결과 문서화
 ```
 
-**결과**: `docs/CHAOS_EXPERIMENTS.md`
+**결과**: `docs/operations/CHAOS_EXPERIMENTS.md`
 
 ```markdown
 # Chaos Engineering Experiments
@@ -1118,7 +1116,7 @@ docker-compose exec clickhouse sh -c "tc qdisc add dev eth0 root netem delay 100
 
 ### Task 3.3: Runbook 작성 (3시간)
 
-**파일**: `docs/RUNBOOK.md`
+**파일**: `docs/operations/RUNBOOK.md`
 
 ```markdown
 # CTR Pipeline Runbook
@@ -1277,197 +1275,11 @@ curl -X PATCH http://localhost:8081/jobs/{job-id}/savepoints \
 **목표**: 면접에서 자신있게 발표할 수 있는 자료
 **면접 질문 대응**: "프로젝트를 설명해주세요" (30분 발표)
 
-### Task 4.1: 블로그 포스트 작성 (8시간)
-
-**목표**: LinkedIn/블로그에 올릴 수 있는 고퀄리티 포스트
-
-**파일**: `docs/BLOG_POST.md`
-
-```markdown
-# Real-time CTR Calculator: 백엔드 개발자의 데이터 엔지니어링 여정
-
-## TL;DR
-5년차 백엔드 개발자가 3개월 동안 Flink 기반 실시간 CTR 계산 파이프라인을 만들며 배운 것들
-
-**주요 성과**:
-- ⚡ 초당 5만 이벤트 처리
-- 📊 80% 테스트 커버리지
-- 🎯 p99 latency < 4초
-- 🛡️ EXACTLY_ONCE semantics
-
-[GitHub](링크) | [Live Demo](링크) | [Slides](링크)
-
-## 왜 이 프로젝트를 시작했나?
-
-백엔드 개발자로 5년 일하면서 항상 궁금했습니다:
-- "실시간으로 수백만 이벤트를 처리하는 시스템은 어떻게 만드나?"
-- "데이터 파이프라인은 API 서버와 뭐가 다른가?"
-
-YouTube, Netflix, Amazon이 사용하는 기술을 직접 만들어보고 싶었습니다.
-
-## 무엇을 만들었나?
-
-**Real-time CTR (Click-Through Rate) Calculator**
-
-광고 impression과 click 이벤트를 실시간으로 받아서 10초 윈도우마다 CTR을 계산하는 파이프라인.
-
-```
-100 impressions + 25 clicks → CTR = 25%
-```
-
-**아키텍처**:
-```
-Kafka → Flink → ClickHouse
-         ↓
-     Prometheus → Grafana
-```
-
-## 핵심 도전 과제
-
-### 1. Event Time vs Processing Time
-
-**문제**: 네트워크 지연으로 이벤트가 순서대로 안 옴
-
-**해결**:
-- Watermark로 5초 out-of-order 허용
-- Allowed lateness로 추가 5초 대기
-- 그 이후 도착한 이벤트는 drop (메트릭으로 추적)
-
-**배운 점**: 분산 시스템에서는 "시간"이 복잡하다.
-이벤트가 발생한 시간 vs 시스템이 받은 시간을 구분해야 한다.
-
-### 2. Exactly-Once Semantics
-
-**문제**: TaskManager가 죽으면 데이터 손실? 중복?
-
-**해결**:
-- Checkpoint를 60초마다 저장
-- Kafka offset을 checkpoint에 포함
-- 재시작 시 마지막 checkpoint부터 재처리
-
-**실험**: TaskManager를 강제로 kill해봤음
-- 결과: 45초 내 자동 복구, 데이터 손실 0
-
-**배운 점**: Checkpoint가 "데이터베이스의 transaction"과 비슷한 역할.
-
-### 3. Data Quality
-
-**문제**: Invalid event가 10% 이상 발견됨
-
-**해결**:
-- Validation을 5가지 카테고리로 분류
-  - Missing fields
-  - Future timestamp
-  - Old timestamp (> 7 days)
-  - Invalid event type
-  - Other
-- 각 카테고리별로 메트릭 수집
-- Grafana에서 실시간 모니터링
-
-**배운 점**: 데이터 엔지니어링에서는 "방어적 프로그래밍"이 필수.
-Silent failure는 절대 안 됨.
-
-### 4. Performance Tuning
-
-**목표**: 초당 10만 이벤트 처리
-
-**시도한 것**:
-1. JSON → Avro (30% 성능 향상)
-2. Parallelism 2 → 4 (2배 처리량)
-3. Network buffer 튜닝
-4. Operator chaining 최적화
-
-**결과**:
-- 로컬: 5만 events/s (CPU bound)
-- 예상 프로덕션: 20만 events/s (더 많은 리소스)
-
-**배운 점**: Bottleneck을 찾는 게 중요.
-Profiling → 가설 → 실험 → 측정
-
-## 백엔드 vs 데이터 엔지니어링
-
-| 백엔드 개발 | 데이터 엔지니어링 |
-|------------|-----------------|
-| Request → Response (즉시) | Event → Processing → Result (지연) |
-| 에러 → 500 응답 (사용자가 알아차림) | 에러 → 조용히 데이터 손실 (모를 수 있음) |
-| Stateless (대부분) | Stateful (항상) |
-| Scale up (vertical) | Scale out (horizontal) |
-| 테스트: 기능 검증 | 테스트: 데이터 정확성 검증 |
-
-**가장 큰 차이**:
-백엔드는 "빠른 응답"이 중요하지만,
-데이터 엔지니어링은 "정확한 데이터"가 중요.
-
-## 기술 스택 선택 이유
-
-**Flink**:
-- Kafka Streams보다 강력한 windowing
-- Spark Streaming보다 낮은 latency
-- 풍부한 state management
-
-**Kotlin**:
-- Null safety → NullPointerException 0건
-- Data class → 50% 코드 감소
-- Extension function → DSL 작성 용이
-
-**ClickHouse**:
-- Columnar storage → 빠른 aggregation
-- SQL 쿼리 가능
-- Time-series 데이터에 최적화
-
-**Testcontainers**:
-- 실제 Kafka/ClickHouse로 테스트
-- 통합 테스트 신뢰도 높음
-
-## 만약 다시 한다면?
-
-### 잘한 것
-✅ 테스트 먼저 작성 (TDD)
-✅ 메트릭 초기부터 추가
-✅ ADR로 의사결정 문서화
-
-### 아쉬운 것
-❌ 초기에 Redis를 너무 빨리 추가 (나중에 제거)
-❌ 성능 테스트를 나중에 함 (초기부터 했어야)
-❌ Schema 변경을 고려 안 함 (Avro 처음부터 쓸걸)
-
-## 다음 단계
-
-1. **Kubernetes 배포**: Helm chart 작성, HPA 설정
-2. **Schema Registry**: Avro schema evolution
-3. **Data Quality Framework**: Great Expectations 통합
-4. **ML Integration**: CTR prediction model 추가
-
-## 마무리
-
-3개월 동안 이 프로젝트를 하면서:
-- Streaming 아키텍처를 이해했습니다
-- 데이터 품질의 중요성을 깨달았습니다
-- 분산 시스템의 복잡함을 경험했습니다
-
-**가장 큰 배움**:
-"동작하는 코드"와 "프로덕션 가능한 코드"는 다르다.
-
----
-
-**GitHub**: [링크]
-**LinkedIn**: [링크]
-**Contact**: [이메일]
-```
-
-**LinkedIn에 포스팅 + 블로그 업로드**
-
-**면접에서**:
-- "제 블로그에 프로젝트 전체를 정리했습니다"
-- "3개월 동안 배운 걸 정리했는데, 읽어보시겠어요?"
-
----
-
-### Task 4.2: Presentation Deck (6시간)
+### Task 4.1: Presentation Deck (6시간)
 
 **목표**: 30분 발표 자료
 
-**파일**: `docs/presentation.pdf` (Google Slides → PDF)
+**파일**: `docs/portfolio/presentation.pdf` (Google Slides → PDF)
 
 **슬라이드 구성** (25장):
 
@@ -1518,7 +1330,7 @@ Profiling → 가설 → 실험 → 측정
 
 ---
 
-### Task 4.3: Video Demo (4시간)
+### Task 4.2: Video Demo (4시간)
 
 **목표**: 5분짜리 데모 영상
 
@@ -1574,7 +1386,7 @@ Product A는 CTR이 25%, Product B는 15%네요.
 
 ---
 
-### Task 4.4: LinkedIn Profile 업데이트 (1시간)
+### Task 4.3: LinkedIn Profile 업데이트 (1시간)
 
 **Projects 섹션에 추가**:
 
@@ -1594,7 +1406,7 @@ Apache Flink 기반 실시간 스트리밍 파이프라인
 Skills: Apache Flink · Kafka · ClickHouse · Kotlin · Data Engineering ·
         Stream Processing · Prometheus · Grafana
 
-[GitHub] [Demo Video] [Blog Post]
+[GitHub] [Demo Video] [Presentation]
 ```
 
 **Skills 섹션에 추가**:
@@ -1611,7 +1423,6 @@ Skills: Apache Flink · Kafka · ClickHouse · Kotlin · Data Engineering ·
 
 ### Phase 4 체크리스트
 
-- [ ] 블로그 포스트 작성 (3000자+)
 - [ ] LinkedIn/Medium에 포스팅
 - [ ] Presentation deck 작성 (25장)
 - [ ] 5분 데모 영상 촬영 및 업로드
@@ -1740,7 +1551,6 @@ Kafka topic의 event 수와 ClickHouse의 row 수를 비교하는 배치 job을 
 
 ### 기술적 성공
 - ✅ GitHub stars > 10
-- ✅ 블로그 포스트 views > 100
 - ✅ Demo 가능
 - ✅ 30분 발표 가능
 
@@ -1800,9 +1610,9 @@ cd flink-app
 
 ### Week 9-12: Portfolio
 ```bash
-# Week 9-10: 블로그
-- 포스트 작성
-- LinkedIn 공유
+# Week 9-10: Portfolio README
+- 프로젝트 설명 정리
+- 핵심 성과/트레이드오프 정리
 
 # Week 11: Presentation
 - Slides 작성
